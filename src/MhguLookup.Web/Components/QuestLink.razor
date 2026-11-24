@@ -1,0 +1,9 @@
+@* A quest named the way every reference names it: "Hub 3★: Title". *@
+<span class="text-muted">@QuestText.Prefix(Category, Stars):</span> <a href="quests/@Quest">@Title</a>
+
+@code {
+    [Parameter] public int Quest { get; set; }
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Category { get; set; } = "";
+    [Parameter] public string Stars { get; set; } = "";
+}

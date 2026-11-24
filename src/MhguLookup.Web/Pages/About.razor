@@ -1,0 +1,59 @@
+@page "/about"
+
+<PageTitle>About · MHGU LookUp</PageTitle>
+
+<div class="page roomy about">
+    <div style="max-width: 720px">
+        <h1 class="page-title" style="margin: 0 0 12px">MHGU LookUp</h1>
+        <p>
+            A reference app for <strong>Monster Hunter Generations Ultimate</strong>: monsters, quests, weapons, armor, decorations, armor skills,
+            Hunting Styles, Hunter Arts and items, with more tabs filled in as their data is read from the game.
+            Created by <strong>Armored_Raven</strong>, as the GU sibling of the MHFU LookUp.
+        </p>
+
+        <h2>This version</h2>
+        <p>
+            This is the C# version of the app, built with Blazor WebAssembly: it runs on .NET in the browser, as a static site with no server.
+            It reads the same data files as the <a href="@Nav.ReactAppUrl" target="_blank" rel="noopener">original React version</a>.
+            The source is on <a href="https://github.com/ArmoredRaven17/mhgu-lookup-blazor" target="_blank" rel="noopener">GitHub</a>.
+        </p>
+
+        <h2>Where the data comes from</h2>
+        <p>
+            Every name, description and value is read from the game's own text and data tables (dumped from a
+            personally-owned copy). Nothing is carried over from the MHFU app or taken from guides; community
+            databases were used only to check that a table had been read right. No game files are redistributed.
+        </p>
+        <p>
+            Two things on the Monsters tab are not the game's: the hit-zone names, which come from the community
+            (the game has no names for them), and which class each monster belongs to (the class names are the
+            game's, the assignment was made by hand). The monster data itself was read from the game by the MHGU
+            Monster Viewer.
+        </p>
+        <p>
+            The short armor and food skill explanations are written from the ones in MHGU Armor Skills Explained,
+            which were read from the game's code and data the same way; each skill links to its full explanation there.
+        </p>
+
+        <h2>Development</h2>
+        <p>
+            Built with substantial help from <a href="https://claude.com/claude-code" target="_blank" rel="noopener">Claude Code</a>,
+            Anthropic's AI coding tool: most of the code, the data tools and the text were written with AI assistance,
+            directed and reviewed by the author. Errors may remain; verify any value you rely on.
+        </p>
+
+        <h2>Credits</h2>
+        <p>
+            The app shell (layout, search, bookmarks, notes, settings) comes from the MHFU LookUp. The MHFU display
+            font is a fan-made recreation of the Monster Hunter interface typeface; the menu textures are carried
+            over from the sibling apps.
+        </p>
+
+        <h2>License</h2>
+        <p>
+            Source code: MIT License. <strong>Monster Hunter</strong> names, text and other game content are
+            © CAPCOM CO., LTD., used here as non-commercial fan content. This app is not affiliated with or
+            endorsed by Capcom.
+        </p>
+    </div>
+</div>

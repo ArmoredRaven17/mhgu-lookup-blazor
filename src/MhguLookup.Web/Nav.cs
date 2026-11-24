@@ -1,19 +1,15 @@
 namespace MhguLookup.Web;
 
 /// <summary>A tab in the top bar.</summary>
-/// <param name="Ported">
-/// Whether the tab has been ported from the React app yet. An unported tab shows a page that links to
-/// the same tab in the live React app.
-/// </param>
-public sealed record NavItem(string Path, string Label, bool Ported = false);
+public sealed record NavItem(string Path, string Label);
 
 public static class Nav
 {
-    /// <summary>The live React version of the app, which every unported tab links to.</summary>
+    /// <summary>The original React version of the app.</summary>
     public const string ReactAppUrl = "https://armoredraven17.github.io/MHGU-LookUp/";
 
-    /// <summary>The tab the app opens on.</summary>
-    public const string Home = "armorskills";
+    /// <summary>The tab the app opens on, and the one an unknown address goes to.</summary>
+    public const string Home = "weapons";
 
     /// <summary>The tabs, in the React app's order.</summary>
     public static IReadOnlyList<NavItem> Items { get; } =
@@ -23,7 +19,7 @@ public static class Nav
         new("monsters", "Monsters"),
         new("weapons", "Weapons"),
         new("armor", "Armor"),
-        new("armorskills", "Armor Skills", Ported: true),
+        new("armorskills", "Armor Skills"),
         new("decorations", "Decorations"),
         new("styles", "Hunting Styles"),
         new("arts", "Hunter Arts"),
@@ -37,5 +33,20 @@ public static class Nav
         new("settings", "Settings"),
         new("help", "Help"),
         new("about", "About"),
+    ];
+
+    /// <summary>The kinds of page a bookmark or note can be on, in the order Bookmarks and Notes list them.</summary>
+    public static IReadOnlyList<(string Type, string Header)> EntitySections { get; } =
+    [
+        ("monster", "Monsters"),
+        ("weapon", "Weapons"),
+        ("armor", "Armor"),
+        ("armorskill", "Armor Skills"),
+        ("decoration", "Decorations"),
+        ("art", "Hunter Arts"),
+        ("quest", "Quests"),
+        ("gathering", "Gathering"),
+        ("dish", "Canteen Dishes"),
+        ("item", "Items"),
     ];
 }

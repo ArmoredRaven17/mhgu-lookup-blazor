@@ -1,0 +1,51 @@
+@page "/armor"
+@page "/armor/{Id}"
+@inherits DataPage
+
+<PageTitle>@(Selected?.Name ?? "Armor") · MHGU LookUp</PageTitle>
+
+<ListPage Entries="_entries" Base="armor" Selected="@Id" Loading="Loading" HasDetail="Selected is not null"
+          Placeholder="Search armor, pieces or skills…" EmptyText="@(Error ?? "Select an armor set from the list.")"
+          Filter="new(_class, Classes, EventCallback.Factory.Create<string>(this, SetClass))">
+    @if (Selected is { } s)
+    {
+        <ArmorDetail @key="s.Id" Set="s" />
+    }
+</ListPage>
+
+@code {
+    private static readonly IReadOnlyList<(string, string)> Classes =
+        [("all", "All armor"), ("Blademaster", "Blademaster"), ("Gunner", "Gunner")];
+
+    [Parameter] public string? Id { get; set; }
+
+    private IReadOnlyList<ArmorSet> _sets = [];
+    private string _class = "all";
+    private IReadOnlyList<ListEntry> _entries = [];
+
+    private ArmorSet? Selected => _sets.FirstOrDefault(s => s.Id.ToString() == Id);
+
+    protected override Task OnInitializedAsync() => LoadAsync(async () =>
+    {
+        _sets = await Data.Armor();
+        BuildEntries();
+    });
+
+    private void SetClass(string value)
+    {
+        _class = value;
+        BuildEntries();
+    }
+
+    // In the game's order: RARE 1..11, then the event sets.
+    private void BuildEntries() => _entries = _sets
+        .Where(s => _class == "all" || s.Class == _class || s.Class == "Both")
+        .Select(s => new ListEntry(
+            Key: s.Id.ToString(),
+            Label: s.Name,
+            Icon: Icons.Armor("Chest", s.Rarity),
+            Group: s.Event ? "Event" : $"RARE {s.Rarity}",
+            Sub: $"Rarity {s.Rarity} · {s.Class}{(s.Gender != "Both" ? $" · {s.Gender}" : "")}",
+            Search: string.Join(' ', s.Pieces.Select(p => p.Name + " " + string.Join(' ', p.Skills.Select(k => k.Name))))))
+        .ToList();
+}

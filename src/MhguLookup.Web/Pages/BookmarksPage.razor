@@ -1,0 +1,53 @@
+@page "/bookmarks"
+@implements IDisposable
+@inject Bookmarks Bookmarks
+@inject NavigationManager Navigation
+
+<PageTitle>Bookmarks · MHGU LookUp</PageTitle>
+
+@{
+    var all = Bookmarks.All;
+    var groups = Nav.EntitySections
+        .Select(s => (s.Header, Entries: all.Where(b => b.Type == s.Type).ToList()))
+        .Where(g => g.Entries.Count > 0)
+        .ToList();
+}
+<div class="combos">
+    <div style="padding: 16px 16px 8px">
+        <h1 class="page-title" style="margin: 0">Bookmarks</h1>
+        <p class="text-muted fs-13" style="margin-top: 2px">
+            Bookmark a monster, quest, weapon, armor set, skill tree, Hunter Art or item on its page, then click it here to jump straight back to it.
+        </p>
+    </div>
+    @if (groups.Count == 0)
+    {
+        <p class="text-muted fs-13" style="padding: 4px 16px">No bookmarks yet.</p>
+    }
+    else
+    {
+        <div style="overflow-y: auto; flex: 1; padding: 0 16px 16px">
+            @foreach (var (header, entries) in groups)
+            {
+                <div @key="header">
+                    <div class="fs-13" style="font-weight: 700; margin: 12px 0 2px">@header</div>
+                    @foreach (var bm in entries)
+                    {
+                        var path = bm.Path;
+                        <div @key="path" class="bookmark-row">
+                            <button class="bookmark-open fs-14" @onclick="() => Navigation.NavigateTo(path)">@bm.Name</button>
+                            <button class="icon-button fs-14" title="Remove bookmark" @onclick="() => Bookmarks.Remove(path)">✕</button>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    protected override void OnInitialized() => Bookmarks.Changed += OnChanged;
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Bookmarks.Changed -= OnChanged;
+}

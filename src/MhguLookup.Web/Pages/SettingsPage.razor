@@ -1,0 +1,49 @@
+@page "/settings"
+@inject UiSettings Settings
+
+<PageTitle>Settings · MHGU LookUp</PageTitle>
+
+<div class="page roomy" style="padding-bottom: 300px">
+    <div style="max-width: 720px">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px">
+            <h1 class="page-title" style="margin: 0">Settings</h1>
+            <button class="button" style="background: var(--surface); padding: 6px 12px" @onclick="Settings.Reset">Restore Defaults</button>
+        </div>
+
+        <h2 class="fs-16" style="margin-bottom: 8px; font-weight: 600">Appearance</h2>
+
+        <p class="fs-13" style="margin-bottom: 6px">Text size</p>
+        <Dropdown Value="@Settings.TextScale.ToString(CultureInfo.InvariantCulture)" Options="ScaleOptions" OnChange="SetTextScale" />
+        <p class="hint">Grows text only — not a page zoom, so the layout stays put.</p>
+
+        <p class="fs-13" style="margin: 16px 0 6px">App colour (background theme)</p>
+        <div style="margin-bottom: 12px">
+            <Dropdown Value="@Settings.Surface" Options="SurfaceOptions" OnChange="Settings.SetSurface" />
+        </div>
+
+        <p class="fs-13" style="margin-bottom: 6px">Accent colour (highlights)</p>
+        <div style="margin-bottom: 4px">
+            <Dropdown Value="@AccentValue" Options="AccentOptions" OnChange="Settings.SetAccent" />
+        </div>
+        <p class="hint">Colour and accent apply immediately and are remembered on this device.</p>
+    </div>
+</div>
+
+@code {
+    private static readonly IReadOnlyList<Dropdown.Option> ScaleOptions =
+        UiSettings.TextScales.Select(s => new Dropdown.Option(s.Value.ToString(CultureInfo.InvariantCulture), s.Label)).ToList();
+
+    private static readonly IReadOnlyList<Dropdown.Option> SurfaceOptions =
+        Appearance.Presets.Select(p => new Dropdown.Option(p.Key, p.Name, p.Swatch)).ToList();
+
+    // The accent choices are the presets' swatch colours.
+    private static readonly IReadOnlyList<Dropdown.Option> AccentOptions =
+        Appearance.Presets.Select(p => new Dropdown.Option(p.Swatch, p.Name, p.Swatch)).ToList();
+
+    // The saved accent, as one of the choices (the first when it matches none).
+    private string AccentValue =>
+        (Appearance.Presets.FirstOrDefault(p => string.Equals(p.Swatch, Settings.Accent, StringComparison.OrdinalIgnoreCase)) ?? Appearance.Presets[0]).Swatch;
+
+    private void SetTextScale(string value) =>
+        Settings.SetTextScale(double.Parse(value, CultureInfo.InvariantCulture));
+}

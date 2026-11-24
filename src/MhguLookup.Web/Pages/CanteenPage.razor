@@ -1,0 +1,121 @@
+@page "/canteen"
+@page "/canteen/{Id}"
+@inherits DataPage
+
+@*  Routes: canteen/d<row> a dish, canteen/i<index> an ingredient, canteen/s<id> a Food Skill, canteen/skills that list. *@
+
+<PageTitle>Canteen · MHGU LookUp</PageTitle>
+
+<ListPage Entries="_entries" Base="canteen" Selected="@Id" Loading="Loading" HasDetail="HasDetail"
+          Placeholder="@Placeholder" EmptyText="@(Error ?? "Select a dish, an ingredient or a skill.")"
+          Filter="new(_view, Views, EventCallback.Factory.Create<string>(this, SetView))">
+    @if (_data is { } data)
+    {
+        if (SelectedFoodSkill is { } food)
+        {
+            <div style="max-width: 720px">
+                <DetailHeader Title="@food.Skill" />
+                <p class="text-muted fs-13" style="margin: 0 0 8px; font-style: italic; white-space: pre-line">@food.Desc</p>
+                @if (!string.IsNullOrEmpty(food.Brief))
+                {
+                    <p class="fs-14">@food.Brief</p>
+                }
+                <p class="fs-12" style="margin-top: 6px">
+                    <a href="@($"{Explained}#f{food.Id}")" target="_blank" rel="noopener">More detail in MHGU Armor Skills Explained</a>
+                </p>
+            </div>
+        }
+        else if (SelectedDish is { } row)
+        {
+            <DishDetail @key="Id" Data="data" Row="row" />
+        }
+        else if (SelectedIngredient is { } ing)
+        {
+            <IngredientDetail @key="Id" Data="data" Index="ing" />
+        }
+    }
+</ListPage>
+
+@code {
+    private const string Explained = "https://armoredraven17.github.io/mhgu-armor-skills-explained/";
+
+    private static readonly IReadOnlyList<(string, string)> Views =
+        [("dishes", "Dishes"), ("ingredients", "Ingredients"), ("skills", "Food Skills")];
+
+    [Parameter] public string? Id { get; set; }
+
+    private Canteen? _data;
+    private string _view = "dishes";
+    private string? _viewFor;
+    private IReadOnlyList<ListEntry> _entries = [];
+
+    private string Placeholder => _view switch
+    {
+        "dishes" => "Search dishes or ingredients…",
+        "ingredients" => "Search ingredients…",
+        _ => "Search…",
+    };
+
+    /// <summary>The view a route belongs to, or null for none.</summary>
+    private static string? ViewOf(string? id) => id switch
+    {
+        "skills" => "skills",
+        ['s', .. var n] when n.All(char.IsAsciiDigit) && n.Length > 0 => "skills",
+        ['i', .. var n] when n.All(char.IsAsciiDigit) && n.Length > 0 => "ingredients",
+        ['d', .. var n] when n.All(char.IsAsciiDigit) && n.Length > 0 => "dishes",
+        _ => null,
+    };
+
+    private int? Number => Id is { Length: > 1 } && int.TryParse(Id.AsSpan(1), out var n) ? n : null;
+
+    private FoodSkill? SelectedFoodSkill => _data is null || ViewOf(Id) != "skills" ? null : _data.FoodSkills.FirstOrDefault(s => $"s{s.Id}" == Id);
+
+    private int? SelectedDish => _data is not null && ViewOf(Id) == "dishes" && Number is { } n && n < _data.Dishes.Count ? n : null;
+
+    private int? SelectedIngredient => _data is not null && ViewOf(Id) == "ingredients" && Number is { } n && n < _data.Ingredients.Count ? n : null;
+
+    private bool HasDetail => SelectedFoodSkill is not null || SelectedDish is not null || SelectedIngredient is not null;
+
+    protected override Task OnInitializedAsync() => LoadAsync(async () =>
+    {
+        _data = await Data.Canteen();
+        BuildEntries();
+    });
+
+    // A link to a dish, an ingredient or a skill shows that view's list.
+    protected override void OnParametersSet()
+    {
+        if (Id == _viewFor) return;
+        _viewFor = Id;
+        if (ViewOf(Id) is { } v && v != _view)
+        {
+            _view = v;
+            BuildEntries();
+        }
+    }
+
+    private void SetView(string value)
+    {
+        _view = value;
+        BuildEntries();
+    }
+
+    private void BuildEntries()
+    {
+        if (_data is not { } data) return;
+        _entries = _view switch
+        {
+            "skills" => data.FoodSkills
+                .Select(s => new ListEntry($"s{s.Id}", s.Skill, Group: "Food Skills", Search: s.Desc)).ToList(),
+            "ingredients" => data.Ingredients
+                .Select((n, i) => new ListEntry($"i{i}", n, Group: "Ingredients", Sub: CanteenText.UnlockHint(data.Unlocks[i][0]),
+                    Search: string.Join(' ', data.Unlocks[i].Select(CanteenText.UnlockHint)))).ToList(),
+            _ => data.Dishes
+                .Select((d, i) => new ListEntry($"d{i}", d.Name, Group: $"Canteen Level {d.Level}",
+                    Sub: d.Ingredients is { } ings ? string.Join(" + ", ings) : "On the menu from the start",
+                    Search: string.Join(' ', d.Ingredients ?? [])))
+                .OrderBy(e => e.Group, StringComparer.InvariantCulture)
+                .ToList(),
+        };
+    }
+}

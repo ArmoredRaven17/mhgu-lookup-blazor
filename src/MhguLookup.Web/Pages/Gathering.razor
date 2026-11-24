@@ -1,0 +1,118 @@
+@page "/gathering"
+@page "/gathering/{Id}"
+@inherits DataPage
+
+<PageTitle>@(Selected?.Name ?? "Gathering") · MHGU LookUp</PageTitle>
+
+<ListPage Entries="_entries" Base="gathering" Selected="@Id" Loading="Loading" HasDetail="Selected is not null"
+          Placeholder="Search locales or items…"
+          EmptyText="@(Error ?? "Select a locale from the list. Search finds every locale an item can be gathered in.")">
+    @if (Selected is { } m)
+    {
+        var id = m.Map.ToString();
+        var path = $"gathering/{id}";
+        var ranks = Ranks.Where(r => m.Ranks.Any(x => x.Rank == r)).ToList();
+        var shown = m.Ranks.FirstOrDefault(r => r.Rank == _rank) ?? m.Ranks[0];
+        <div @key="id" style="max-width: 900px">
+            <DetailHeader Title="@m.Name" Sub="Gathering points and what each gives per gather">
+                <BookmarkButton Bookmark="new Bookmark(Type, id, m.Name, path)" />
+            </DetailHeader>
+
+            <div style="display: flex; gap: 4px; margin-bottom: 14px">
+                @foreach (var r in ranks)
+                {
+                    var rank = r;
+                    <button class="@(r == shown.Rank ? "chip active" : "chip") fs-12" @onclick="() => _rank = rank">@r</button>
+                }
+            </div>
+
+            @foreach (var a in shown.Areas)
+            {
+                <Section @key="a.Area" Title="@a.Name">
+                    @* every card the same width, in the same columns in every area *@
+                    <div class="gather-grid">
+                        @foreach (var p in a.Points)
+                        {
+                            <div class="card gather-card">
+                                <div class="gather-kind">
+                                    @p.Kind@if (p.Random) { <span class="text-muted" style="font-weight: 400"> · random point</span> }
+                                </div>
+                                @if (p.Items is { } items)
+                                {
+                                    @ItemTable(items)
+                                }
+                                @if (p.Outcomes is { } outcomes)
+                                {
+                                    for (var k = 0; k < outcomes.Count; k++)
+                                    {
+                                        <div style="margin-top: @(k > 0 ? 8 : 0)px">
+                                            <div class="text-muted fs-11" style="margin-bottom: 2px">@outcomes[k].Chance% of the time</div>
+                                            @ItemTable(outcomes[k].Items)
+                                        </div>
+                                    }
+                                }
+                                @if (p.Baits is { } baits)
+                                {
+                                    for (var k = 0; k < baits.Count; k++)
+                                    {
+                                        <div style="margin-top: @(k > 0 ? 8 : 0)px">
+                                            <div class="text-muted fs-11" style="margin-bottom: 2px">@baits[k].Bait</div>
+                                            @ItemTable(baits[k].Items)
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        }
+                    </div>
+                </Section>
+            }
+
+            <p class="text-muted fs-12" style="margin-bottom: 18px">
+                The percentages are per gather. A random point uses one of its lists, chosen at the chance shown.
+            </p>
+
+            <Section Title="Notes">
+                <NotesBox Target="@(new NoteTarget(Type, id, m.Name, "Locale", path))" />
+            </Section>
+        </div>
+    }
+</ListPage>
+
+@code {
+    private const string Type = "gathering";
+    private static readonly string[] Ranks = ["Low Rank", "High Rank", "G Rank"];
+
+    [Parameter] public string? Id { get; set; }
+
+    private IReadOnlyList<GatherMap> _maps = [];
+    private IReadOnlyList<ListEntry> _entries = [];
+    private string _rank = "Low Rank";
+
+    private GatherMap? Selected => _maps.FirstOrDefault(m => m.Map.ToString() == Id);
+
+    protected override Task OnInitializedAsync() => LoadAsync(async () =>
+    {
+        _maps = await Data.Gathering();
+        _entries = _maps.Select(m => new ListEntry(
+            Key: m.Map.ToString(),
+            Label: m.Name,
+            Sub: string.Join(" · ", m.Ranks.Select(r => r.Rank.Replace(" Rank", ""))),
+            // search a locale by what can be gathered there
+            Search: string.Join(' ', m.Ranks.SelectMany(r => r.Areas).SelectMany(a => a.Points).SelectMany(p => p.AllItems)
+                .Select(i => i.Name).Distinct())))
+            .ToList();
+    });
+
+    // A point's items, most likely first.
+    private static RenderFragment ItemTable(IReadOnlyList<ChanceItem> items) => @<table class="tbl" style="width: 100%">
+        <tbody>
+            @foreach (var i in items.OrderByDescending(i => i.Percent))
+            {
+                <tr class="tbl-row">
+                    <td class="tbl-cell" style="min-width: 180px"><ItemName Name="@i.Name" />@if (i.Qty > 1) { <span class="text-muted"> ×@i.Qty</span> }</td>
+                    <td class="tbl-cell" style="text-align: right; width: 48px">@(i.Percent)%</td>
+                </tr>
+            }
+        </tbody>
+    </table>;
+}

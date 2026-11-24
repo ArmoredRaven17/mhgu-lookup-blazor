@@ -1,0 +1,27 @@
+@* A dialog over the page. Escape, a click outside it, or the ✕ closes it. *@
+
+<div class="modal-backdrop" @onclick="OnClose">
+    <div class="modal wide" role="dialog" aria-label="@Title" tabindex="-1"
+         @ref="_dialog" @onclick:stopPropagation @onkeydown="OnKeyDown">
+        <div class="modal-head">
+            <h2>@Title</h2>
+            <button class="modal-close" title="Close" @onclick="OnClose">✕</button>
+        </div>
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter, EditorRequired] public EventCallback OnClose { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private ElementReference _dialog;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await _dialog.FocusAsync();
+    }
+
+    private Task OnKeyDown(KeyboardEventArgs e) => e.Key == "Escape" ? OnClose.InvokeAsync() : Task.CompletedTask;
+}

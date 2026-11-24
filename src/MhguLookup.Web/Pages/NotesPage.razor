@@ -1,0 +1,53 @@
+@page "/notes"
+@implements IDisposable
+@inject Notes Notes
+@inject NavigationManager Navigation
+
+<PageTitle>Notes · MHGU LookUp</PageTitle>
+
+@* Every note written on a page, grouped by kind of page. *@
+@{
+    var all = Notes.All;
+    var groups = Nav.EntitySections
+        .Select(s => (s.Header, Entries: all.Where(n => n.Type == s.Type).OrderBy(n => n.Name, StringComparer.InvariantCulture).ToList()))
+        .Where(g => g.Entries.Count > 0)
+        .ToList();
+}
+<div class="page">
+    <div class="page-body">
+        <h1 class="page-title" style="margin: 0">Notes</h1>
+        <p class="text-muted fs-13" style="margin: 2px 0 12px">
+            Write a note at the bottom of any monster, quest, weapon, armor set, skill tree, Hunter Art or item page. They are kept on this device.
+        </p>
+        @if (groups.Count == 0)
+        {
+            <p class="text-muted fs-13">No notes yet.</p>
+        }
+        @foreach (var (header, entries) in groups)
+        {
+            <div @key="header" style="margin-bottom: 16px">
+                <div class="fs-13" style="font-weight: 700; margin-bottom: 6px">@header</div>
+                @foreach (var n in entries)
+                {
+                    var note = n;
+                    <div @key="(n.Type + n.Id)" class="card" style="margin-bottom: 8px">
+                        <div style="display: flex; align-items: center; gap: 8px">
+                            <button class="note-open fs-14" @onclick="() => Navigation.NavigateTo(note.Path)">@n.Name</button>
+                            <span class="text-muted fs-12" style="flex: 1">@n.Category</span>
+                            <button class="icon-button fs-14" title="Delete note" @onclick="() => Notes.Remove(note.Type, note.Id)">✕</button>
+                        </div>
+                        <p class="fs-13" style="margin-top: 4px; white-space: pre-wrap">@n.Note</p>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    protected override void OnInitialized() => Notes.Changed += OnChanged;
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Notes.Changed -= OnChanged;
+}

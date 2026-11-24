@@ -10,9 +10,7 @@
         <div class="nav-tabs">
             @foreach (var item in Nav.Items)
             {
-                <NavLink href="@item.Path" Match="NavLinkMatch.Prefix"
-                         class="@(item.Ported ? "nav-tab" : "nav-tab unported")" ActiveClass="active"
-                         title="@(item.Ported ? item.Label : $"{item.Label} (not ported yet)")">
+                <NavLink href="@item.Path" Match="NavLinkMatch.Prefix" class="nav-tab" ActiveClass="active" title="@item.Label">
                     @item.Label
                 </NavLink>
             }

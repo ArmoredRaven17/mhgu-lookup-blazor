@@ -1,0 +1,34 @@
+@page "/help"
+
+<PageTitle>Help · MHGU LookUp</PageTitle>
+
+<div class="page roomy">
+    <div style="max-width: 720px">
+        <h1 class="page-title" style="margin: 0">Help</h1>
+        @foreach (var (topic, body) in Topics)
+        {
+            <h2 class="help-heading">@topic</h2>
+            <p class="fs-14" style="line-height: 1.6">@body</p>
+        }
+    </div>
+</div>
+
+@code {
+    private static readonly (string Topic, string Body)[] Topics =
+    [
+        ("Monsters", "Every monster with its class and the ranks it is fought at, its hit zones (how much of each damage type each zone takes; some monsters have a second table), and its parts: how much damage staggers or breaks each, and the Kinsect extract it gives. The zone names are the community's, because the game has none."),
+        ("Weapons", "Pick a weapon class in the dropdown; the list follows the upgrade tree, each weapon under the one it upgrades from. A weapon shows every level: pick a level to see its attack, affinity, element, slots, sharpness (with Handicraft +1 and +2) and the class's own details (phial, shelling, notes, Bow charge shots and coatings, bowgun ammo, rapid and crouching fire), what it costs to forge or upgrade, and what it upgrades into."),
+        ("Armor", "Every armor set, Blademaster and Gunner, with each piece's slots, skill points and forge materials, the set's defense, resistances and upgrade costs, and the game's description of each piece. Search finds a set by a piece or a skill too."),
+        ("Armor Skills", "The list is the skill trees found on armor and decorations. A tree shows the skill each point total activates, the game's description, a short explanation of what each skill actually does, and a link to its full explanation in MHGU Armor Skills Explained. Search finds a tree by its skills' names too."),
+        ("Decorations", "Every decoration with the slots it needs, its skill points (click a skill to open its tree) and its recipes. Filter by slots, or search by a skill's name."),
+        ("Hunting Styles", "The six styles in the game's own words, with what each style's SP State does."),
+        ("Hunter Arts", "Every Hunter Art with its tiers, and the game's short and full description of each tier."),
+        ("Quests", "Every quest on the boards: Village, Hub (Low, High and G Rank), Special Permit, Arena, Event and Training, grouped by stars or rank. A quest shows its objective, subquest, failure conditions, locale, time, fee, reward, requirements, monsters and the client's summary, all in the game's words."),
+        ("Gathering", "Every locale's gathering, mining and insect points, area by area and rank by rank, with each item's chance per gather. Search an item to find every locale it can be gathered in."),
+        ("Items", "Every item with its in-game description, price, and where to get it: the shop, combining, monsters (carves, captures, part breaks, shiny drops), gathering points and quest rewards, with the chance of each. Decorations have their own tab."),
+        ("Canteen", "Every dish with its two ingredients, its effects for you and your Palico, and the Felyne skills each sauce gives, with the chance each activates. Switch to Ingredients to see how each ingredient is unlocked and every dish it makes, or to Food Skills for each skill a sauce can give at random, with the game's description and a short explanation."),
+        ("Combo List", "Every combination with its base success rate; click an item to open it."),
+        ("Bookmarks and Notes", "The bookmark button beside a title saves the page to Bookmarks. The Notes box at the bottom of a page keeps your own notes; the Notes tab lists them all. Both stay on this device."),
+        ("The list panel", "Drag the bar beside the list to make it wider or narrower; click it to hide the list."),
+    ];
+}

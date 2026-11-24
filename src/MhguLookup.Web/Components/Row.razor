@@ -1,0 +1,11 @@
+@* A label | value row of a details table. *@
+
+<tr class="tbl-row">
+    <td class="tbl-cell text-muted row-label">@Label</td>
+    <td class="tbl-cell">@ChildContent</td>
+</tr>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

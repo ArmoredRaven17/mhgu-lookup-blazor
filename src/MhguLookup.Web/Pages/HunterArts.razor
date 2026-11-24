@@ -1,0 +1,98 @@
+@page "/arts"
+@page "/arts/{Id}"
+@inherits DataPage
+
+<PageTitle>@(Selected?.Name ?? "Hunter Arts") · MHGU LookUp</PageTitle>
+
+<ListPage Entries="_entries" Base="arts" Selected="@Id" Loading="Loading" HasDetail="Selected is not null"
+          Placeholder="Search Hunter Arts…" EmptyText="@(Error ?? "Select a Hunter Art from the list.")">
+    @if (Selected is { } g)
+    {
+        var path = $"arts/{g.Key}";
+        <div style="max-width: 720px">
+            <DetailHeader Title="@g.Name" Sub="@Sub(g)">
+                <BookmarkButton Bookmark="new Bookmark(Type, g.Key, g.Name, path)" />
+            </DetailHeader>
+            @foreach (var t in g.Tiers)
+            {
+                <div @key="t.Id" class="card" style="margin-bottom: 12px">
+                    <h3 class="fs-15" style="margin-bottom: 6px; color: var(--accent)">@t.Name</h3>
+                    <GameTextView Text="@t.Short" Class="text-muted fs-13" Style="margin: 0 0 8px; font-style: italic" />
+                    <GameTextView Text="@t.Full" Class="fs-13" />
+                    <div class="fs-13" style="margin-top: 10px">
+                        <div class="text-muted fs-12" style="margin-bottom: 2px">How to Get It</div>
+                        <ul class="plain-list">
+                            @for (var i = 0; i < t.Unlock.Count; i++)
+                            {
+                                <li>@if (i > 0) { <span class="text-muted">or </span> }@Unlock(t.Unlock[i])</li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            }
+            <Section Title="Notes">
+                <NotesBox Target="new NoteTarget(Type, g.Key, g.Name, Category, path)" />
+            </Section>
+        </div>
+    }
+</ListPage>
+
+@code {
+    private const string Type = "art";
+    private const string Category = "Hunter Art";
+
+    [Parameter] public string? Id { get; set; }
+
+    private IReadOnlyList<Grouping.ArtGroup> _groups = [];
+    private Dictionary<string, string> _classNames = [];
+    private IReadOnlyList<ListEntry> _entries = [];
+
+    private Grouping.ArtGroup? Selected => _groups.FirstOrDefault(g => g.Key == Id);
+
+    protected override Task OnInitializedAsync() => LoadAsync(async () =>
+    {
+        var arts = Data.Arts();
+        var index = Data.WeaponIndex();
+        _groups = Grouping.ArtGroups(await arts);
+        _classNames = (await index).Classes.ToDictionary(c => c.Id, c => c.Name);
+        _entries = _groups.Select(g => new ListEntry(
+            Key: g.Key,
+            Label: g.Name,
+            Group: g.Weapon is null ? "Generic" : ClassName(g.Weapon),
+            GroupColor: g.Weapon is null ? null : Grouping.GuildCardColors.GetValueOrDefault(g.Weapon))).ToList();
+    });
+
+    private string ClassName(string weapon) => _classNames.GetValueOrDefault(weapon, weapon);
+
+    private string Sub(Grouping.ArtGroup g) => string.Join(" · ", new[]
+    {
+        g.Weapon is null ? "Generic" : ClassName(g.Weapon),
+        g.Tiers.Count > 1 ? $"{g.Tiers.Count} tiers" : null,
+    }.OfType<string>());
+
+    // One way the game teaches an Art.
+    private static RenderFragment Unlock(ArtUnlock u) => u switch
+    {
+        StartUnlock => @<text>From the start.</text>,
+        QuestUnlock q => @<text>Clear <QuestLink Quest="q.Quest" Title="@q.Title" Category="@q.Category" Stars="@q.Stars" />.</text>,
+        QuestsUnlock qs => @<text>Clear @for (var i = 0; i < qs.Quests.Count; i++) { var q = qs.Quests[i]; if (i > 0) { @(" and ") }<QuestLink Quest="q.Quest" Title="@q.Title" Category="@q.Category" Stars="@q.Stars" /> }.</text>,
+        ProgressUnlock p => @<text>@Progress(p)</text>,
+        RequestsUnlock r => @<text>Complete @r.Count Villager Requests in @r.Village.</text>,
+        ContributionUnlock c => @<text>Earn @c.Points Contribution Points in @c.Village.</text>,
+        HuntUnlock h => @<text>Hunt @for (var i = 0; i < h.Monsters.Count; i++) { var m = h.Monsters[i]; if (i > 0) { @(" or ") }@(Format.Article(m.Name) + " ")<a href="monsters/@m.Id">@m.Name</a> }.</text>,
+        PalicoUnlock p => @<text>Raise a Palico to Lv @p.Level.</text>,
+        _ => _ => { },
+    };
+
+    private static string Progress(ProgressUnlock p)
+    {
+        var parts = new[]
+        {
+            p.Village is null ? null : $"unlock Village {p.Village} Quests",
+            p.Hr is null ? null : $"reach HR {p.Hr}",
+            p.Hub is null ? null : $"unlock {p.Hub} Quests",
+        }.OfType<string>();
+        var text = string.Join(", or ", parts);
+        return text.Length == 0 ? "" : char.ToUpperInvariant(text[0]) + text[1..] + ".";
+    }
+}

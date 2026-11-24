@@ -1,0 +1,55 @@
+@* A Canteen ingredient: how to unlock it, and every dish it makes. *@
+
+@{
+    var name = Data.Ingredients[Index];
+    var ingredients = Data.Ingredients.ToList();
+    var uses = Data.Dishes.Select((d, i) => (Dish: d, Row: i)).Where(x => x.Dish.Ingredients?.Contains(name) == true).ToList();
+}
+<div style="max-width: 720px">
+    <DetailHeader Title="@name" Sub="Canteen ingredient" />
+    <Section Title="How to Get It">
+        <ul class="plain-list fs-13">
+            @foreach (var u in Data.Unlocks[Index])
+            {
+                <li style="margin-bottom: 4px">@Unlock(u)</li>
+            }
+        </ul>
+    </Section>
+    <Section Title="@($"Dishes ({uses.Count})")">
+        <table class="tbl">
+            <thead>
+                <tr>
+                    @foreach (var h in new[] { "Dish", "With", "Level" })
+                    {
+                        <th class="tbl-header" style="text-align: left">@h</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var (d, row) in uses)
+                {
+                    var other = d.Ingredients!.FirstOrDefault(n => n != name) ?? name;
+                    <tr class="tbl-row">
+                        <td class="tbl-cell"><a href="canteen/d@(row)">@d.Name</a></td>
+                        <td class="tbl-cell"><a href="canteen/i@(ingredients.IndexOf(other))">@other</a></td>
+                        <td class="tbl-cell">@d.Level</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </Section>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Canteen Data { get; set; } = null!;
+    [Parameter] public int Index { get; set; }
+
+    private static RenderFragment Unlock(IngredientUnlock u) => u switch
+    {
+        StartIngredient => @<text>On the list from the start.</text>,
+        TalkIngredient t => @<text>Talk to the @t.Npc.</text>,
+        RequestIngredient r => @<text>Fulfill @(r.Npc)'s Villager Request:@for (var i = 0; i < r.Items.Count; i++) { var it = r.Items[i]; @(i > 0 ? ", " : " ")<a href="items/@it.Id"><ItemName Name="@it.Name" Id="it.Id" /></a>@($" ×{it.Qty}") }.</text>,
+        QuestIngredient q => @<text>Clear <QuestLink Quest="q.Quest" Title="@q.Title" Category="@q.Category" Stars="@q.Stars" />.</text>,
+        _ => _ => { },
+    };
+}

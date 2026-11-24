@@ -53,6 +53,8 @@ public sealed class Notes(LocalStore store)
         Write(others);
     }
 
+    public void Remove(string type, string id) => Write(Read().Where(n => !(n.Type == type && n.Id == id)).ToList());
+
     private List<NoteRecord> Read() =>
         store.GetJson(Key, LookupJsonContext.Default.ListNoteRecord, [])
             .Where(n => n is { Type.Length: > 0, Id.Length: > 0 } && n.Note is not null)

@@ -1,0 +1,31 @@
+@page "/styles"
+@inherits DataPage
+
+<PageTitle>Hunting Styles · MHGU LookUp</PageTitle>
+
+<div class="page">
+    <div class="page-body">
+        <h1 class="page-title">Hunting Styles</h1>
+        <p class="page-intro">Each style in the game's own words: the style select's summary and description, then its SP State.</p>
+        @if (Error is not null)
+        {
+            <p class="text-muted fs-13">@Error</p>
+        }
+        @foreach (var s in _styles)
+        {
+            <div @key="s.Key" class="card" style="margin-bottom: 14px">
+                <h2 style="margin-bottom: 4px; color: var(--accent)" class="fs-18">@s.Name</h2>
+                <GameTextView Text="@s.Short" Class="text-muted fs-13" Style="margin: 0 0 10px; font-style: italic" />
+                <GameTextView Text="@s.Full" Class="fs-14" Style="margin: 0 0 10px" />
+                <h3 class="fs-12" style="margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em">SP State</h3>
+                <GameTextView Text="@s.Sp" Class="fs-13" />
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private IReadOnlyList<Style> _styles = [];
+
+    protected override Task OnInitializedAsync() => LoadAsync(async () => _styles = await Data.Styles());
+}

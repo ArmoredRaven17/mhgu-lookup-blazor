@@ -1,0 +1,104 @@
+@page "/palicoskills"
+@page "/palicoskills/{Id}"
+@inherits DataPage
+
+@*  Routes: palicoskills/s<id> a Palico Skill, palicoskills/m<id> a Support Move, palicoskills/b<id> a Support Bias.
+    Every label is the game's own text (palico.json's labels). *@
+
+<PageTitle>Palico Skills &amp; Moves · MHGU LookUp</PageTitle>
+
+<ListPage Entries="_entries" Base="palicoskills" Selected="@Id" Loading="Loading" HasDetail="Detail is not null"
+          Placeholder="Search skills, moves or biases…" EmptyText="@(Error ?? "Select a Palico Skill, a Support Move or a Support Bias.")"
+          Filter="@(_data is null ? null : new(_view, Views, EventCallback.Factory.Create<string>(this, SetView)))">
+    @Detail
+</ListPage>
+
+@code {
+    [Parameter] public string? Id { get; set; }
+
+    private Palico? _data;
+    private string _view = "skills";
+    private string? _viewFor;
+    private IReadOnlyList<ListEntry> _entries = [];
+    private IReadOnlyList<(string, string)> Views = [];
+
+    private static string? ViewOf(string? id) => id?.FirstOrDefault() switch { 'm' => "moves", 'b' => "biases", 's' => "skills", _ => null };
+
+    protected override Task OnInitializedAsync() => LoadAsync(async () =>
+    {
+        _data = await Data.Palico();
+        var L = _data.Labels;
+        Views = [("skills", L.Skills), ("moves", L.Moves), ("biases", L.Bias)];
+        BuildEntries();
+    });
+
+    protected override void OnParametersSet()
+    {
+        if (Id == _viewFor) return;
+        _viewFor = Id;
+        if (ViewOf(Id) is { } v && v != _view)
+        {
+            _view = v;
+            BuildEntries();
+        }
+    }
+
+    private void SetView(string value)
+    {
+        _view = value;
+        BuildEntries();
+    }
+
+    private void BuildEntries()
+    {
+        if (_data is not { } data) return;
+        var L = data.Labels;
+        _entries = _view switch
+        {
+            "biases" => data.Biases.Select(b => new ListEntry($"b{b.Id}", b.Name, Group: L.Bias, Search: Format.Flat(b.Desc))).ToList(),
+            // grouped by type, in the game's order of the types, and its own order within each
+            "moves" => data.Moves.OrderBy(m => m.Kind)
+                .Select(m => new ListEntry($"m{m.Id}", m.Name, Group: m.Type, Sub: $"{L.Gauge} {m.Gauge}", Search: Format.Flat(m.Desc)))
+                .ToList(),
+            _ => data.Skills.Select(s => new ListEntry($"s{s.Id}", s.Name, Group: L.Skills, Sub: $"{L.Memory} {s.Memory}", Search: Format.Flat(s.Desc))).ToList(),
+        };
+    }
+
+    private RenderFragment? Detail
+    {
+        get
+        {
+            if (_data is not { } data || Id is not { Length: > 1 } || !int.TryParse(Id.AsSpan(1), out var n)) return null;
+            var L = data.Labels;
+            return Id[0] switch
+            {
+                's' when data.Skills.FirstOrDefault(x => x.Id == n) is { } s => @<div style="max-width: 720px">
+                    <DetailHeader Title="@s.Name" Sub="@L.Skills" />
+                    <GameTextView Text="@s.Desc" Class="text-muted fs-13" Style="margin: 0 0 10px; font-style: italic" />
+                    <table class="tbl fs-13">
+                        <tbody>
+                            <Row Label="@L.Memory">@s.Memory</Row>
+                            <Row Label="@L.Conditions"><GameTextView Text="@s.Condition" /></Row>
+                        </tbody>
+                    </table>
+                </div>,
+                'm' when data.Moves.FirstOrDefault(x => x.Id == n) is { } m => @<div style="max-width: 720px">
+                    <DetailHeader Title="@m.Name" Sub="@L.Moves" />
+                    <GameTextView Text="@m.Desc" Class="text-muted fs-13" Style="margin: 0 0 10px; font-style: italic" />
+                    <table class="tbl fs-13">
+                        <tbody>
+                            <Row Label="@L.Type">@m.Type</Row>
+                            <Row Label="@L.Gauge">@m.Gauge</Row>
+                            <Row Label="@L.Conditions"><GameTextView Text="@m.Condition" /></Row>
+                        </tbody>
+                    </table>
+                </div>,
+                'b' when data.Biases.FirstOrDefault(x => x.Id == n) is { } b => @<div style="max-width: 720px">
+                    <DetailHeader Title="@b.Name" Sub="@L.Bias" />
+                    <GameTextView Text="@b.Desc" />
+                </div>,
+                _ => null,
+            };
+        }
+    }
+}

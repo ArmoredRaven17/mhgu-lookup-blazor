@@ -1,0 +1,21 @@
+@* A weapon's element(s) at a level, each in its colour with its value beside it. *@
+
+@{
+    var parts = new List<(string Element, int? Value)>();
+    if (Weapon.Element is { } e1) parts.Add((e1, Level.Ele));
+    if (Weapon.Element2 is { } e2) parts.Add((e2, Level.Ele2));
+}
+@for (var i = 0; i < parts.Count; i++)
+{
+    var (e, v) = parts[i];
+    if (i > 0)
+    {
+        @(" / ")
+    }
+    <span style="color: @GameColors.ElementColor(e); font-weight: 600">@e</span>@($" {v}")
+}
+
+@code {
+    [Parameter, EditorRequired] public Weapon Weapon { get; set; } = null!;
+    [Parameter, EditorRequired] public WeaponLevel Level { get; set; } = null!;
+}

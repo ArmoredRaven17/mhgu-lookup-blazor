@@ -1,0 +1,73 @@
+@* A quest: its objective, conditions, rewards, monsters and the client's summary, all in the game's words. *@
+
+@{
+    var q = Quest;
+    var id = q.Id.ToString();
+    var path = $"quests/{id}";
+}
+<div style="max-width: 760px">
+    <DetailHeader Title="@q.Title" Icon="@TargetIcon"
+                  Sub="@(string.Join(" · ", new[] { q.Category, q.Stars, q.Rank, q.Key ? "Key Quest" : "" }.Where(s => s.Length > 0)))">
+        <BookmarkButton Bookmark="new Bookmark(Type, id, q.Title, path)" />
+    </DetailHeader>
+
+    <Section Title="Quest">
+        <table class="tbl">
+            <tbody>
+                <Row Label="Main Objective"><GameTextView Text="@q.Objective" /></Row>
+                @if (q.Subquest.Length > 0)
+                {
+                    <Row Label="Subquest">
+                        <GameTextView Text="@q.Subquest" />
+                        @if (q.SubReward > 0 || q.SubHrp > 0)
+                        {
+                            <span class="text-muted"> (@(Format.N(q.SubReward))z@(q.SubHrp > 0 ? $", {q.SubHrp} HRP" : ""))</span>
+                        }
+                    </Row>
+                }
+                <Row Label="Failure"><GameTextView Text="@q.Failure" /></Row>
+                <Row Label="Locale">@q.Locale</Row>
+                <Row Label="Time">@q.Time min.</Row>
+                <Row Label="Fee">@(Format.N(q.Fee))z</Row>
+                <Row Label="Reward">
+                    @(Format.N(q.Reward))z@if (q.Hrp > 0) { <span class="text-muted"> · @q.Hrp HRP</span> }
+                </Row>
+                <Row Label="Requirements">@(q.Requirements.Count > 0 ? string.Join(", ", q.Requirements) : "None")</Row>
+                @if (q.Monsters.Count > 0)
+                {
+                    <Row Label="Main Monsters">
+                        @for (var i = 0; i < q.Monsters.Count; i++)
+                        {
+                            var m = q.Monsters[i];
+                            if (i > 0)
+                            {
+                                @(", ")
+                            }
+                            <a href="monsters/@m.Id">@m.Name</a>
+                        }
+                    </Row>
+                }
+                @if (q.Others.Length > 0 && q.Others != "None")
+                {
+                    <Row Label="Other Monsters"><GameTextView Text="@(q.Others.Replace("\n", ", "))" /></Row>
+                }
+                <Row Label="Client">@q.Client</Row>
+            </tbody>
+        </table>
+    </Section>
+
+    <Section Title="Summary">
+        <GameTextView Text="@q.Desc" Class="fs-14" />
+    </Section>
+
+    <Section Title="Notes">
+        <NotesBox Target="@(new NoteTarget(Type, id, q.Title, $"{q.Category} {q.Stars}".Trim(), path))" />
+    </Section>
+</div>
+
+@code {
+    private const string Type = "quest";
+
+    [Parameter, EditorRequired] public Quest Quest { get; set; } = null!;
+    [Parameter] public string? TargetIcon { get; set; }
+}

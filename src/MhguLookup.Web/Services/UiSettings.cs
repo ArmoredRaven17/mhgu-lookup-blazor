@@ -26,13 +26,54 @@ public sealed class UiSettings(LocalStore store, IJSRuntime js)
 
     public bool ListCollapsed => store.Get(CollapsedKey) == "true";
 
+    /// <summary>The surface theme's key (see <see cref="Appearance.Presets"/>).</summary>
+    public string Surface => store.Get(SurfaceKey) ?? Appearance.DefaultSurface;
+
+    /// <summary>The accent colour, as #RRGGBB.</summary>
+    public string Accent => Appearance.ClampHex(store.Get(AccentKey) ?? Appearance.DefaultAccent);
+
+    /// <summary>The Text Size choices: text only, not a page zoom, so the layout stays put.</summary>
+    public static IReadOnlyList<(double Value, string Label)> TextScales { get; } =
+        [(0.75, "75%"), (1, "100% (default)"), (1.25, "125%"), (1.5, "150%"), (1.75, "175%"), (2, "200%")];
+
     /// <summary>Apply the saved colours and text size. Called once, when the app starts.</summary>
     public void ApplySaved()
     {
-        SetCssVariables(Appearance.SurfaceVariables(store.Get(SurfaceKey) ?? Appearance.DefaultSurface));
-        SetCssVariables(Appearance.AccentVariables(store.Get(AccentKey) ?? Appearance.DefaultAccent));
-        SetCssVariables(new Dictionary<string, string> { ["--text-scale"] = TextScale.ToString(CultureInfo.InvariantCulture) });
+        SetCssVariables(Appearance.SurfaceVariables(Surface));
+        SetCssVariables(Appearance.AccentVariables(Accent));
+        ApplyTextScale();
     }
+
+    public void SetSurface(string key)
+    {
+        store.Set(SurfaceKey, key);
+        SetCssVariables(Appearance.SurfaceVariables(key));
+    }
+
+    public void SetAccent(string hex)
+    {
+        var h = Appearance.ClampHex(hex);
+        store.Set(AccentKey, h);
+        SetCssVariables(Appearance.AccentVariables(h));
+    }
+
+    public void SetTextScale(double scale)
+    {
+        store.Set(TextScaleKey, scale.ToString(CultureInfo.InvariantCulture));
+        ApplyTextScale();
+        Changed?.Invoke();   // the list panel's width follows the text size
+    }
+
+    /// <summary>Back to the default colours and text size.</summary>
+    public void Reset()
+    {
+        SetSurface(Appearance.DefaultSurface);
+        SetAccent(Appearance.DefaultAccent);
+        SetTextScale(1);
+    }
+
+    private void ApplyTextScale() =>
+        SetCssVariables(new Dictionary<string, string> { ["--text-scale"] = TextScale.ToString(CultureInfo.InvariantCulture) });
 
     public void ToggleListCollapsed()
     {

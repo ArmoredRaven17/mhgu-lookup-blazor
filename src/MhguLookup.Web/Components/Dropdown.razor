@@ -1,0 +1,71 @@
+@* A select replacement that shows each option's colour swatch, both closed and open (a native option can't). *@
+@implements IDisposable
+
+<div class="dropdown" @onfocusout="OnFocusOut" @onkeydown="OnKeyDown">
+    <button type="button" class="dropdown-button" aria-haspopup="listbox" aria-expanded="@(_open ? "true" : "false")"
+            @onclick="() => _open = !_open">
+        @Swatch(Current?.Swatch)
+        <span class="clip-text dropdown-label">@(Current?.Label ?? Value)</span>
+        <span class="text-muted fs-11">@(_open ? "▴" : "▾")</span>
+    </button>
+    @if (_open)
+    {
+        <div class="dropdown-menu" role="listbox">
+            @foreach (var o in Options)
+            {
+                var option = o;
+                <button type="button" role="option" aria-selected="@(o.Value == Value ? "true" : "false")"
+                        class="@(o.Value == Value ? "menu-row selected" : "menu-row")" @onclick="() => Choose(option)">
+                    @Swatch(o.Swatch)
+                    <span class="clip-text">@o.Label</span>
+                </button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    public sealed record Option(string Value, string Label, string? Swatch = null);
+
+    [Parameter, EditorRequired] public string Value { get; set; } = "";
+    [Parameter, EditorRequired] public IReadOnlyList<Option> Options { get; set; } = [];
+    [Parameter] public EventCallback<string> OnChange { get; set; }
+
+    private bool _open;
+    private CancellationTokenSource? _closing;
+
+    private Option? Current => Options.FirstOrDefault(o => o.Value == Value);
+
+    private async Task Choose(Option o)
+    {
+        _closing?.Cancel();
+        _open = false;
+        await OnChange.InvokeAsync(o.Value);
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") _open = false;
+    }
+
+    // Close when focus leaves the dropdown (a click elsewhere). The delay lets a click on an option land first.
+    private async Task OnFocusOut()
+    {
+        _closing?.Cancel();
+        _closing = new CancellationTokenSource();
+        var token = _closing.Token;
+        await Task.Delay(150);
+        if (!token.IsCancellationRequested) _open = false;
+    }
+
+    public void Dispose() => _closing?.Cancel();
+
+    private static RenderFragment Swatch(string? color) => builder =>
+    {
+        if (color is null) return;
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "class", "swatch");
+        builder.AddAttribute(2, "style", $"background: {color}");
+        builder.CloseElement();
+    };
+}

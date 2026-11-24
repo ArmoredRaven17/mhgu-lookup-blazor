@@ -1,0 +1,83 @@
+@* A monster's carves and drops at one rank. A group shows when the rank has one list for it, or when every list is a
+   Deviant band named by its Special Permit levels; other multiple lists (some extra shiny drops) are left out until
+   they can be labelled. Breaks are listed by the parts they come from. *@
+
+@if (_shown.Count > 0 || _breaks.Count > 0)
+{
+    <Section Title="@Rank">
+        <div class="flex-wrap-top">
+            @foreach (var (label, lists) in _shown)
+            {
+                <div>
+                    <div class="sub-heading">@label</div>
+                    @if (lists.Count == 1)
+                    {
+                        @Rows(lists[0].Rows)
+                    }
+                    else
+                    {
+                        foreach (var l in lists)
+                        {
+                            <div style="margin-bottom: 6px">
+                                <div class="text-muted fs-12" style="margin-bottom: 2px">@l.Levels</div>
+                                @Rows(l.Rows)
+                            </div>
+                        }
+                    }
+                </div>
+            }
+            @if (_breaks.Count > 0)
+            {
+                var bands = _breaks.Select(b => b.Band).Distinct().Count();
+                <div>
+                    <div class="sub-heading">Break</div>
+                    @foreach (var b in _breaks)
+                    {
+                        <div style="margin-bottom: 6px">
+                            <div class="text-muted fs-12" style="margin-bottom: 2px">@(b.Levels is not null && bands > 1 ? $"{b.Name} — {b.Levels}" : b.Name)</div>
+                            @Rows(b.Rows)
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </Section>
+}
+
+@code {
+    [Parameter, EditorRequired] public string Rank { get; set; } = "";
+    [Parameter, EditorRequired] public MonsterRewards Rewards { get; set; } = null!;
+
+    private IReadOnlyList<(string Label, IReadOnlyList<RewardList> Lists)> _shown = [];
+    private IReadOnlyList<BreakList> _breaks = [];
+
+    protected override void OnParametersSet()
+    {
+        var r = Rewards;
+        static bool Readable(IReadOnlyList<RewardList>? ls) => ls is { Count: > 0 } && (ls.Count == 1 || ls.All(l => l.Levels is not null));
+        _shown = new (string, IReadOnlyList<RewardList>?)[]
+            {
+                ("Carve", r.Carve), ("Tail Carve", r.Tail), ("Mine", r.Mine), ("Shiny Drop", r.Shiny), ("Gather", r.Gather), ("Capture", r.Capture),
+            }
+            .Where(g => Readable(g.Item2))
+            .Select(g => (g.Item1, g.Item2!))
+            .ToList();
+        var brk = r.Break ?? [];
+        _breaks = brk.All(b => b.Name is not null) && (brk.Select(b => b.Band).Distinct().Count() == 1 || brk.All(b => b.Levels is not null))
+            ? brk : [];
+    }
+
+    private static RenderFragment Rows(IReadOnlyList<RewardRow> rows) => @<table class="tbl fs-13">
+        <tbody>
+            @foreach (var row in rows)
+            {
+                <tr class="tbl-row">
+                    <td class="tbl-cell" style="white-space: nowrap">
+                        <a href="items/@row.ItemId"><ItemName Name="@row.Name" Id="row.ItemId" /></a>@if (row.Qty > 1) { <span class="text-muted"> ×@row.Qty</span> }
+                    </td>
+                    <td class="tbl-cell" style="text-align: right">@(row.Percent)%</td>
+                </tr>
+            }
+        </tbody>
+    </table>;
+}

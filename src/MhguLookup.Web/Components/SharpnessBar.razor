@@ -1,0 +1,23 @@
+@* One sharpness gauge: the table row (where each colour ends) cut at Length, drawn to scale against Max. *@
+
+@{
+    var segs = GameColors.SharpSegments(Row, Length);
+    var title = string.Join(" · ", segs.Select((s, i) => s > 0 ? $"{GameColors.SharpNames[i]} {s}" : null).OfType<string>());
+}
+<div class="sharpness-bar" title="@title">
+    @for (var i = 0; i < segs.Length; i++)
+    {
+        if (segs[i] > 0)
+        {
+            <div style="width: @Pct(segs[i])%; background: @GameColors.SharpColors[i]"></div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<int> Row { get; set; } = [];
+    [Parameter] public int Length { get; set; }
+    [Parameter] public int Max { get; set; }
+
+    private string Pct(int s) => (s * 100.0 / Max).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+}

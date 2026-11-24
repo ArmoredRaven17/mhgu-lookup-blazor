@@ -1,0 +1,153 @@
+@* One level of a weapon: attack, affinity, element, slots, the class's own details, sharpness, and gun tables. *@
+
+@{
+    var w = Weapon;
+    var l = Level;
+}
+<table class="tbl">
+    <tbody>
+        <Row Label="Attack">@l.Raw</Row>
+        <Row Label="Affinity">@(l.Aff)%</Row>
+        @if (w.Element is not null)
+        {
+            <Row Label="Element"><ElementText Weapon="w" Level="l" /></Row>
+        }
+        @if (l.Defense > 0)
+        {
+            <Row Label="Defense">+@l.Defense</Row>
+        }
+        <Row Label="Slots"><SlotsText N="l.Slots" /></Row>
+        @if (w.Phial is not null)
+        {
+            <Row Label="Phial">@w.Phial@(l.PhialValue is { } pv and not 0 ? $" {pv}" : "")</Row>
+        }
+        @if (w.Shelling is not null)
+        {
+            <Row Label="Shelling">@w.Shelling Lv @l.ShellLv</Row>
+        }
+        @if (l.Notes is { } notes)
+        {
+            <Row Label="Notes"><NoteIcons Notes="notes" /></Row>
+        }
+        @if (l.Sharp is not null)
+        {
+            <Row Label="Sharpness">
+                @for (var h = 0; h < 3; h++)
+                {
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 3px">
+                        <SharpnessBar Row="Sharpness[l.SharpRow]" Length="l.SharpLength + 25 * h" Max="MaxSharpness" />
+                        <span class="text-muted" style="font-size: 11px">@(h == 0 ? "" : $"Handicraft +{h}")</span>
+                    </div>
+                }
+            </Row>
+        }
+        @if (l.Bow is { } bow)
+        {
+            <Row Label="Arc Shot">@bow.Arc.Replace("Arc Shot: ", "")</Row>
+            <Row Label="Charge Shots">
+                @for (var i = 0; i < bow.Shots.Count; i++)
+                {
+                    var s = bow.Shots[i];
+                    <div style="color: @GameColors.ShotColor(s); font-weight: 600">
+                        @s@if (i >= bow.Open) { <span class="text-muted" style="font-weight: 400" title="Needs the Load Up skill"> (Load Up)</span> }
+                    </div>
+                }
+            </Row>
+            <Row Label="Usable Coatings">
+                @foreach (var c in bow.Coatings)
+                {
+                    var boosted = bow.Boost?.Contains(c) == true;
+                    var col = GameColors.CoatingColor(c);
+                    <div style="margin: 1px 0">
+                        @if (boosted && col is not null)
+                        {
+                            <span title="Coating Boosts" style="color: #101216; background: @col; font-weight: 700; border-radius: 4px; padding: 0 6px">@c</span>
+                        }
+                        else
+                        {
+                            <span style="color: @(col ?? "inherit"); font-weight: @(boosted ? 700 : 600)">@c</span>
+                        }
+                    </div>
+                }
+            </Row>
+        }
+        @if (l.Gun is { } gun)
+        {
+            <Row Label="Reload">@gun.Reload</Row>
+            <Row Label="Recoil">@gun.Recoil</Row>
+            <Row Label="Deviation">@gun.Deviation</Row>
+        }
+    </tbody>
+</table>
+
+@if (l.Gun is { } g)
+{
+    <div class="flex-wrap-top" style="margin-top: 10px">
+        <div>
+            <div class="sub-heading">Ammo</div>
+            <table class="tbl">
+                <tbody>
+                    @foreach (var a in g.Ammo)
+                    {
+                        <tr class="tbl-row"><td class="tbl-cell" style="@AmmoStyle(a.Name)">@a.Name</td><td class="tbl-cell" style="text-align: right">@a.Qty</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (g.Internal.Count > 0)
+        {
+            <div>
+                <div class="sub-heading">Internal Ammo</div>
+                <table class="tbl">
+                    <thead><tr><th class="tbl-header">Ammo</th><th class="tbl-header">Total</th><th class="tbl-header">Clip</th></tr></thead>
+                    <tbody>
+                        @foreach (var a in g.Internal)
+                        {
+                            <tr class="tbl-row"><td class="tbl-cell" style="@AmmoStyle(a.Ammo)">@a.Ammo</td><td class="tbl-cell">@a.Total</td><td class="tbl-cell">@a.Clip</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        @if (g.Rapid is { Count: > 0 } rapid)
+        {
+            <div>
+                <div class="sub-heading">Rapid Fire</div>
+                <table class="tbl">
+                    <thead><tr><th class="tbl-header">Ammo</th><th class="tbl-header">Shots</th><th class="tbl-header">Power</th><th class="tbl-header">Wait</th></tr></thead>
+                    <tbody>
+                        @foreach (var a in rapid)
+                        {
+                            <tr class="tbl-row"><td class="tbl-cell" style="@AmmoStyle(a.Ammo)">@a.Ammo</td><td class="tbl-cell">@a.Shots</td><td class="tbl-cell">@(a.Power)%</td><td class="tbl-cell">@a.Wait</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        @if (g.Crouch is { Count: > 0 } crouch)
+        {
+            <div>
+                <div class="sub-heading">Crouching Fire</div>
+                <table class="tbl">
+                    <tbody>
+                        @foreach (var a in crouch)
+                        {
+                            <tr class="tbl-row"><td class="tbl-cell" style="@AmmoStyle(a.Name)">@a.Name</td><td class="tbl-cell" style="text-align: right">@a.Qty</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public Weapon Weapon { get; set; } = null!;
+    [Parameter, EditorRequired] public WeaponLevel Level { get; set; } = null!;
+    [Parameter, EditorRequired] public IReadOnlyList<int[]> Sharpness { get; set; } = [];
+
+    // Every gauge is drawn against the longest one in the game, so lengths compare across weapons.
+    private int MaxSharpness => Sharpness.Max(r => r[^1]);
+
+    private static string? AmmoStyle(string ammo) => GameColors.AmmoColor(ammo) is { } c ? $"color: {c}; font-weight: 600" : null;
+}

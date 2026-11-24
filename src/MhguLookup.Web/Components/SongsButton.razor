@@ -1,0 +1,28 @@
+@* The Hunting Horn list's "Songs…" button, which opens every song in the game. *@
+@inject LookupData Data
+
+<button class="chip fs-12" @onclick="Open">Songs…</button>
+@if (_open)
+{
+    <Modal Title="Hunting Horn Songs" OnClose="() => _open = false">
+        @if (_songs is null)
+        {
+            <p class="text-muted fs-13">Loading…</p>
+        }
+        else
+        {
+            <SongTable Songs="_songs.Songs" />
+        }
+    </Modal>
+}
+
+@code {
+    private bool _open;
+    private HornSongs? _songs;
+
+    private async Task Open()
+    {
+        _open = true;
+        _songs ??= await Data.HornSongs();
+    }
+}

@@ -1,0 +1,96 @@
+@page "/quests"
+@page "/quests/{Id}"
+@inherits DataPage
+
+<PageTitle>@(Selected?.Title ?? "Quests") · MHGU LookUp</PageTitle>
+
+<ListPage Entries="_entries" Base="quests" Selected="@Id" Loading="Loading" HasDetail="Selected is not null"
+          Placeholder="Search quests, objectives or monsters…" EmptyText="@(Error ?? "Select a quest from the list.")"
+          Filter="new(_category, Categories, EventCallback.Factory.Create<string>(this, SetCategory))">
+    @if (Selected is { } q)
+    {
+        <QuestDetail @key="q.Id" Quest="q" TargetIcon="@TargetIcon(q)" />
+    }
+</ListPage>
+
+@code {
+    private static readonly IReadOnlyList<(string, string)> Categories = Grouping.QuestCategories.Select(c => (c, c)).ToList();
+
+    [Parameter] public string? Id { get; set; }
+
+    private IReadOnlyList<Quest> _quests = [];
+    private IReadOnlyDictionary<int, MonsterRef> _permitMonsters = new Dictionary<int, MonsterRef>();
+    private string _category = "Village";
+    private string? _categoryFor;
+    private IReadOnlyList<ListEntry> _entries = [];
+
+    private Quest? Selected => _quests.FirstOrDefault(q => q.Id.ToString() == Id);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync(async () =>
+        {
+            _quests = await Data.Quests();
+            _permitMonsters = Grouping.PermitMonsters(_quests);
+        });
+        SyncCategory();
+        BuildEntries();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (SyncCategory()) BuildEntries();
+    }
+
+    // A quest opened by link shows its own category's list.
+    private bool SyncCategory()
+    {
+        if (Selected is not { } q || q.Id.ToString() == _categoryFor) return false;
+        _categoryFor = q.Id.ToString();
+        if (q.Category == _category) return false;
+        _category = q.Category;
+        return true;
+    }
+
+    private void SetCategory(string value)
+    {
+        _category = value;
+        BuildEntries();
+    }
+
+    // The main target's icon: the monster's, or the item's for a delivery. A Special Permit quest takes its Deviant's.
+    private string? TargetIcon(Quest q)
+    {
+        if (q.Category == "Special Permit" && _permitMonsters.TryGetValue(Grouping.PermitGroup(q), out var deviant))
+            return Icons.Monster(deviant.Id);
+        return q.Target switch
+        {
+            { Monster: { } m } => Icons.Monster(m),
+            { Item: { } i } => Icons.ItemById(i),
+            _ => null,
+        };
+    }
+
+    // Village and Hub quests are grouped by stars, Special Permits by their Deviant, the rest by rank.
+    private void BuildEntries()
+    {
+        var byRank = _category is "Event" or "Arena" or "Training";
+        var permit = _category == "Special Permit";
+        string? Deviant(Quest q) => _permitMonsters.TryGetValue(Grouping.PermitGroup(q), out var m) && m.Name.Length > 0 ? m.Name : null;
+
+        var list = _quests.Where(q => q.Category == _category);
+        var ordered = permit ? list.OrderBy(Grouping.PermitGroup) : list.OrderBy(_ => 0);
+        ordered = byRank
+            ? ordered.ThenBy(q => Grouping.IndexOf(Grouping.QuestRanks, q.Rank))
+            : ordered.ThenBy(q => q.Level);
+        _entries = ordered.ThenBy(q => q.Order)
+            .Select(q => new ListEntry(
+                Key: q.Id.ToString(),
+                Label: q.Title,
+                Icon: TargetIcon(q),
+                Sub: string.Join(" · ", new[] { permit ? q.Stars : "", q.Key ? "Key Quest" : "", q.Locale, byRank ? "" : q.Rank }.Where(s => s.Length > 0)),
+                Group: permit ? Deviant(q) ?? q.Stars : byRank ? (q.Rank.Length > 0 ? q.Rank : _category) : q.Stars,
+                Search: q.Objective + " " + string.Join(' ', q.Monsters.Select(m => m.Name))))
+            .ToList();
+    }
+}

@@ -1,0 +1,125 @@
+@* A monster: the quests it is fought in, its hit zones, parts, and carves and drops by rank. *@
+@inject LookupData Data
+@inject Icons Icons
+
+@{
+    var m = Monster;
+    var path = $"monsters/{m.Id}";
+}
+<div style="max-width: 900px">
+    <DetailHeader Title="@m.Name" Icon="@Icons.Monster(m.Id)"
+                  Sub="@(string.Join(" · ", new[] { m.Class, m.Small ? "Small monster" : "Large monster" }.Where(s => s.Length > 0)))">
+        <BookmarkButton Bookmark="new Bookmark(Type, m.Id, m.Name, path)" />
+    </DetailHeader>
+
+    @if (_foughtIn.Count > 0)
+    {
+        <Section Title="Quests">
+            <MonsterQuests Quests="_foughtIn" MonsterId="@m.Id" />
+        </Section>
+    }
+
+    @if (m.Hz is { } hz)
+    {
+        <Section Title="Hit Zones">
+            <div class="scroll-x">
+                <table class="tbl">
+                    <thead>
+                        <tr>
+                            <th class="tbl-header" style="text-align: left">Zone</th>
+                            @foreach (var t in ZoneTypes)
+                            {
+                                <th class="tbl-header" style="text-align: right">@ZoneLabels.GetValueOrDefault(t, t)</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var z in hz.Zones)
+                        {
+                            <tr class="tbl-row">
+                                <td class="tbl-cell" style="white-space: nowrap">@z.Name</td>
+                                @foreach (var t in ZoneTypes)
+                                {
+                                    var v = z.Row.GetValueOrDefault(t);
+                                    <td class="tbl-cell" style="text-align: center; background: @GameColors.HitZoneBackground(v, t); color: var(--text)">@v</td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </Section>
+
+        @if (hz.Parts.Count > 0)
+        {
+            <Section Title="Parts">
+                <table class="tbl">
+                    <thead>
+                        <tr>
+                            @foreach (var h in new[] { "Part", "Stagger", "Break", "Extract" })
+                            {
+                                <th class="tbl-header" style="text-align: left">@h</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in hz.Parts)
+                        {
+                            <tr class="tbl-row">
+                                <td class="tbl-cell" style="white-space: nowrap">@p.Name</td>
+                                <td class="tbl-cell">@p.Stagger</td>
+                                <td class="tbl-cell">@(p.Break?.ToString() ?? "—")</td>
+                                @if (GameColors.ExtractColors(p.Extract) is { } c)
+                                {
+                                    <td class="tbl-cell" style="text-align: center; text-transform: capitalize; font-weight: 600; background: @c.Background; color: @c.Text">@p.Extract</td>
+                                }
+                                else
+                                {
+                                    <td class="tbl-cell" style="text-align: center">@(string.IsNullOrEmpty(p.Extract) ? "—" : p.Extract)</td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </Section>
+        }
+    }
+
+    @if (m.Rewards is { } rewards)
+    {
+        foreach (var rank in Ranks)
+        {
+            if (rewards.TryGetValue(rank, out var rw))
+            {
+                <MonsterRewardsView Rank="@rank" Rewards="rw" />
+            }
+        }
+    }
+
+    <Section Title="Notes">
+        <NotesBox Target="@(new NoteTarget(Type, m.Id, m.Name, m.Class.Length > 0 ? m.Class : "Monster", path))" />
+    </Section>
+</div>
+
+@code {
+    private const string Type = "monster";
+    private static readonly string[] Ranks = ["Low Rank", "High Rank", "G Rank"];
+
+    private static readonly Dictionary<string, string> ZoneLabels = new()
+    {
+        ["cut"] = "Cut", ["impact"] = "Impact", ["shot"] = "Shot", ["fire"] = "Fire", ["water"] = "Water", ["ice"] = "Ice",
+        ["thunder"] = "Thunder", ["dragon"] = "Dragon", ["stun"] = "Stun", ["exhaust"] = "Exhaust",
+    };
+
+    [Parameter, EditorRequired] public Monster Monster { get; set; } = null!;
+    [Parameter, EditorRequired] public IReadOnlyList<string> ZoneTypes { get; set; } = [];
+
+    private IReadOnlyList<Quest> _foughtIn = [];
+
+    // Every quest with the monster in a boss slot. The quests file is large, so it fills in after the rest.
+    protected override async Task OnInitializedAsync()
+    {
+        try { _foughtIn = Grouping.QuestsWith(await Data.Quests(), Monster.Id); }
+        catch (Exception ex) when (ex is HttpRequestException or System.Text.Json.JsonException) { Console.Error.WriteLine(ex); }
+    }
+}

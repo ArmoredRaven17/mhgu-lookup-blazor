@@ -1,0 +1,197 @@
+@* A weapon: every level's stats (pick a level), its materials, upgrade paths, names and descriptions. *@
+@inject Icons Icons
+@inject LookupData Data
+
+@{
+    var w = Weapon;
+    var cls = Class;
+    var level = w.Levels.FirstOrDefault(l => l.Lv == _lv) ?? w.Levels[^1];
+    var path = $"weapons/{cls.Id}/{w.Row}";
+    var from = w.From is { } link ? ByRow.GetValueOrDefault(link.Row) : null;
+    var forgeHere = w.Create?.FirstOrDefault(c => c.Level == _lv);
+}
+<div style="max-width: 820px">
+    <DetailHeader Title="@FormAt(_lv).Name" Icon="@Icons.Weapon(cls.Id, w.Rarity)"
+                  Sub="@($"{cls.Name} · Rarity {w.Rarity}{(w.Forms.Count > 1 ? $" · {w.Name} line" : "")}")">
+        <BookmarkButton Bookmark="new Bookmark(Type, Key, w.Name, path)" />
+    </DetailHeader>
+
+    @if (w.Levels.Count > 1)
+    {
+        <div class="chip-row">
+            @foreach (var l in w.Levels)
+            {
+                var lv = l.Lv;
+                <button class="@(lv == _lv ? "chip active" : "chip") fs-12" @onclick="() => _lv = lv">Lv @lv</button>
+            }
+        </div>
+    }
+
+    <Section Title="@($"Level {level.Lv}")">
+        <WeaponStats Weapon="w" Level="level" Sharpness="Sharpness" />
+    </Section>
+
+    @if (level.Notes is { } notes && _songs is not null && _songs.Songs.Where(s => s.Notes.All(notes.Contains)).ToList() is { Count: > 0 } mine)
+    {
+        @* A horn plays a song when every note the song uses is one of the horn's notes. *@
+        <Section Title="Songs"><SongTable Songs="mine" /></Section>
+    }
+
+    <Section Title="Material List">
+        <table class="tbl">
+            <tbody>
+                @foreach (var c in (w.Create ?? []).Where(c => c.Level == _lv))
+                {
+                    var mats = c.Mats;
+                    <Row Label="@(c.Level == 1 ? "Forge" : $"Forge at Lv {c.Level}")"><Materials List Mats="mats" /></Row>
+                }
+                @if (from is not null)
+                {
+                    <Row Label="Upgrade from">
+                        <a href="weapons/@cls.Id/@from.Row">@from.Name</a>
+                        <span class="text-muted"> at Lv @w.From!.Level</span>
+                        @if (w.Levels[0].Cost is { } cost)
+                        {
+                            <div style="margin-top: 4px"><Materials List Mats="cost" /></div>
+                        }
+                    </Row>
+                }
+                @if (level.Lv > 1)
+                {
+                    <Row Label="@($"Lv {level.Lv - 1} → {level.Lv}")">
+                        <Materials List Mats="@(level.Cost ?? [])" />
+                        @if (forgeHere is not null)
+                        {
+                            <div class="text-muted" style="margin-top: 4px">(or forge it at this level, above)</div>
+                        }
+                    </Row>
+                }
+            </tbody>
+        </table>
+    </Section>
+
+    @if (w.Into.Count > 0)
+    {
+        <Section Title="Upgrade Paths">
+            <ul class="plain-list fs-13">
+                @foreach (var t in w.Into)
+                {
+                    <li style="margin: 2px 0">
+                        @if (ByRow.GetValueOrDefault(t.Row) is { } to)
+                        {
+                            <a href="weapons/@cls.Id/@t.Row">@to.Name</a>
+                        }
+                        else
+                        {
+                            @($"#{t.Row}")
+                        }
+                        <span class="text-muted"> (Lv @t.Level)</span>
+                    </li>
+                }
+            </ul>
+        </Section>
+    }
+
+    <Section Title="Stats">
+        <div class="scroll-x">
+            <table class="tbl">
+                <thead>
+                    <tr>
+                        @foreach (var h in new[] { "Lv", "Name", "Attack", "Affinity", w.Element is not null ? "Element" : null, "Slots" }.OfType<string>())
+                        {
+                            <th class="tbl-header" style="text-align: left">@h</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var l in w.Levels)
+                    {
+                        var lv = l.Lv;
+                        <tr @key="lv" class="tbl-row clickable @(lv == _lv ? "selected-row" : "")" @onclick="() => _lv = lv">
+                            <td class="tbl-cell">@l.Lv</td>
+                            <td class="tbl-cell" style="white-space: nowrap">@FormAt(l.Lv).Name</td>
+                            <td class="tbl-cell">@l.Raw</td>
+                            <td class="tbl-cell">@(l.Aff)%</td>
+                            @if (w.Element is not null)
+                            {
+                                <td class="tbl-cell" style="white-space: nowrap"><ElementText Weapon="w" Level="l" /></td>
+                            }
+                            <td class="tbl-cell"><SlotsText N="l.Slots" /></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </Section>
+
+    <Section Title="Cost">
+        <div class="scroll-x">
+            <table class="tbl" style="width: 100%">
+                <thead>
+                    <tr>
+                        @foreach (var h in new[] { "Lv", "Name", "Materials" })
+                        {
+                            <th class="tbl-header" style="text-align: left">@h</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var l in w.Levels)
+                    {
+                        var lv = l.Lv;
+                        var mats = lv == 1 ? w.Create?.FirstOrDefault(c => c.Level == 1)?.Mats ?? l.Cost ?? [] : l.Cost ?? [];
+                        <tr @key="lv" class="tbl-row clickable @(lv == _lv ? "selected-row" : "")" @onclick="() => _lv = lv">
+                            <td class="tbl-cell">@l.Lv</td>
+                            <td class="tbl-cell" style="white-space: nowrap">@FormAt(l.Lv).Name</td>
+                            <td class="tbl-cell"><Materials List Mats="mats" /></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </Section>
+
+    <Section Title="Names and Descriptions">
+        @foreach (var f in w.Forms)
+        {
+            <div @key="f.Name" class="card" style="margin-bottom: 10px">
+                <h3 class="fs-15" style="margin-bottom: 6px; color: var(--accent)">
+                    @f.Name <span class="text-muted fs-12">from Lv @f.From</span>
+                </h3>
+                <GameTextView Text="@f.Text" Class="fs-13" />
+            </div>
+        }
+    </Section>
+
+    <Section Title="Notes">
+        <NotesBox Target="@(new NoteTarget(Type, Key, w.Name, cls.Name, path))" />
+    </Section>
+</div>
+
+@code {
+    private const string Type = "weapon";
+
+    [Parameter, EditorRequired] public WeaponClass Class { get; set; } = null!;
+    [Parameter, EditorRequired] public Weapon Weapon { get; set; } = null!;
+    [Parameter, EditorRequired] public IReadOnlyDictionary<int, Weapon> ByRow { get; set; } = null!;
+    [Parameter, EditorRequired] public IReadOnlyList<int[]> Sharpness { get; set; } = [];
+
+    private int _lv;
+    private HornSongs? _songs;
+
+    private string Key => $"{Class.Id}/{Weapon.Row}";
+
+    // Opens on the weapon's top level.
+    protected override async Task OnInitializedAsync()
+    {
+        _lv = Weapon.Levels[^1].Lv;
+        if (Weapon.Levels.Any(l => l.Notes is not null))
+        {
+            try { _songs = await Data.HornSongs(); }
+            catch (Exception ex) when (ex is HttpRequestException or System.Text.Json.JsonException) { Console.Error.WriteLine(ex); }
+        }
+    }
+
+    /// <summary>The name the weapon has at a level: the last form that starts at or below it.</summary>
+    private WeaponForm FormAt(int lv) => Weapon.Forms.LastOrDefault(f => f.From <= lv) ?? Weapon.Forms[0];
+}

@@ -1,0 +1,76 @@
+@page "/weapons"
+@page "/weapons/{Cls}"
+@page "/weapons/{Cls}/{Row}"
+@inherits DataPage
+@inject NavigationManager Navigation
+
+@*  Route: weapons/<class id>/<row>, e.g. weapons/w10/65. *@
+
+<PageTitle>@(Selected?.Name ?? _class?.Name ?? "Weapons") · MHGU LookUp</PageTitle>
+
+<ListPage Entries="_entries" Base="@ListBase" Selected="@Row" Loading="Loading || _class is null && Error is null"
+          HasDetail="Selected is not null" Placeholder="Search weapons…"
+          EmptyText="@(Error ?? "Select a weapon from the list. The list follows the upgrade tree.")"
+          Filter="ClassFilter" Tools="Tools">
+    @if (Selected is { } w && _class is { } cls && _index is { } index)
+    {
+        <WeaponDetail @key="@($"{cls.Id}/{w.Row}")" Class="cls" Weapon="w" ByRow="_byRow" Sharpness="index.Sharpness" />
+    }
+</ListPage>
+
+@code {
+    [Parameter] public string? Cls { get; set; }
+    [Parameter] public string? Row { get; set; }
+
+    private WeaponIndex? _index;
+    private IReadOnlyList<(string, string)> _classOptions = [];
+    private WeaponClass? _class;
+    private Dictionary<int, Weapon> _byRow = [];
+    private IReadOnlyList<ListEntry> _entries = [];
+
+    private string? ClassId => Cls ?? _index?.Classes.FirstOrDefault()?.Id;
+
+    private Weapon? Selected => _class is null || _class.Id != ClassId ? null : _class.Weapons.FirstOrDefault(w => w.Row.ToString() == Row);
+
+    protected override Task OnInitializedAsync() => LoadAsync(async () =>
+    {
+        _index = await Data.WeaponIndex();
+        _classOptions = _index.Classes.Select(c => (c.Id, c.Name)).ToList();
+    });
+
+    // Load the class's file when the route's class changes (each class is its own file).
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Loading || ClassId is not { } id || _class?.Id == id) return;
+        try
+        {
+            var cls = await Data.WeaponClass(id);
+            if (id != ClassId) return;   // the route moved on while it loaded
+            _class = cls;
+            _byRow = cls.Weapons.ToDictionary(w => w.Row);
+            // In upgrade-tree order, each weapon under the one it upgrades from.
+            _entries = cls.Weapons.Select(w => new ListEntry(
+                Key: w.Row.ToString(),
+                Label: w.Name,
+                Sub: $"Rarity {w.Rarity}",
+                Indent: w.Depth,
+                Tree: true,
+                Search: string.Join(' ', w.Forms.Select(f => f.Name)),
+                Icon: Icons.Weapon(cls.Id, w.Rarity))).ToList();
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.Error.WriteLine(ex);
+            Navigation.NavigateTo("weapons", replace: true);   // an unknown class: back to the first
+        }
+    }
+
+    private void ChooseClass(string id) => Navigation.NavigateTo($"weapons/{id}");
+
+    private string ListBase => $"weapons/{ClassId}";
+
+    private ListPage.ListFilter ClassFilter => new(ClassId ?? "", _classOptions, EventCallback.Factory.Create<string>(this, ChooseClass));
+
+    // The Hunting Horn list gets a button for every song in the game.
+    private RenderFragment? Tools => ClassId == "w12" ? @<SongsButton /> : null;
+}

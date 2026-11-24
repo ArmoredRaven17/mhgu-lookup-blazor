@@ -1,0 +1,158 @@
+@* An armor set: its stats, each piece's slots, skills and materials, upgrades and descriptions. *@
+@inject Icons Icons
+
+@{
+    var s = Set;
+    var id = s.Id.ToString();
+    var path = $"armor/{id}";
+}
+<div style="max-width: 860px">
+    <DetailHeader Title="@s.Name" Icon="@Icons.Armor("Chest", s.Rarity)"
+                  Sub="@($"Rarity {s.Rarity} · {(s.Class == "Both" ? "Blademaster and Gunner" : s.Class)}{(s.Gender != "Both" ? $" · {s.Gender} only" : "")}")">
+        <BookmarkButton Bookmark="new Bookmark(Type, id, s.Name, path)" />
+    </DetailHeader>
+
+    <Section Title="Set">
+        <table class="tbl">
+            <tbody>
+                <Row Label="Defense (each piece)">
+                    @s.Defense[0]@(s.Defense.Count > 1 ? $" → {s.Defense[^1]} at Lv {s.Defense.Count}" : "")
+                </Row>
+                <Row Label="Resistances (each piece)">
+                    @for (var i = 0; i < Res.Length; i++)
+                    {
+                        <div>
+                            <span style="color: @GameColors.ElementColor(Res[i]); font-weight: 600">@Res[i]</span>
+                            <Signed Value="s.Res[i]" />
+                        </div>
+                    }
+                </Row>
+                @if (s.Zenny > 0)
+                {
+                    <Row Label="Forge price (each piece)">@(s.Zenny)z</Row>
+                }
+                <Row Label="Skill points (full set)">
+                    @if (_totals.Count == 0)
+                    {
+                        @("—")
+                    }
+                    @foreach (var (k, v) in _totals)
+                    {
+                        <div>@k <Signed Value="v" /></div>
+                    }
+                </Row>
+            </tbody>
+        </table>
+    </Section>
+
+    <Section Title="Stats">
+        <div class="scroll-x">
+            <table class="tbl">
+                <thead><tr>@Headers("Slot", "Piece", "Slots", "Skills")</tr></thead>
+                <tbody>
+                    @foreach (var p in s.Pieces)
+                    {
+                        <tr @key="p.Slot" class="tbl-row">
+                            @PieceCells(p)
+                            <td class="tbl-cell" style="vertical-align: top"><SlotsText N="p.Slots" /></td>
+                            <td class="tbl-cell" style="white-space: nowrap; vertical-align: top">
+                                @foreach (var k in p.Skills)
+                                {
+                                    <div>@k.Name <Signed Value="k.Qty" /></div>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </Section>
+
+    <Section Title="Materials">
+        <div class="scroll-x">
+            <table class="tbl">
+                <thead><tr>@Headers("Slot", "Piece", "Materials")</tr></thead>
+                <tbody>
+                    @foreach (var p in s.Pieces)
+                    {
+                        <tr @key="p.Slot" class="tbl-row">
+                            @PieceCells(p)
+                            <td class="tbl-cell"><Materials List Mats="@(p.Create ?? [])" /></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </Section>
+
+    @if (s.Upgrades.Count > 0)
+    {
+        <Section Title="Upgrades (each piece)">
+            <table class="tbl">
+                <thead><tr>@Headers("Level", "Defense", "Materials")</tr></thead>
+                <tbody>
+                    @for (var i = 0; i < s.Upgrades.Count; i++)
+                    {
+                        <tr class="tbl-row">
+                            <td class="tbl-cell">Lv @(i + 2)</td>
+                            <td class="tbl-cell">@(i + 1 < s.Defense.Count ? s.Defense[i + 1] : "")</td>
+                            <td class="tbl-cell"><Materials Mats="s.Upgrades[i]" /></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </Section>
+    }
+
+    <Section Title="Descriptions">
+        @foreach (var p in s.Pieces)
+        {
+            <div @key="p.Slot" style="margin-bottom: 8px">
+                <div class="fs-13" style="color: var(--accent)">@p.Name</div>
+                <GameTextView Text="@p.Desc" Class="fs-13" />
+            </div>
+        }
+    </Section>
+
+    <Section Title="Notes">
+        <NotesBox Target="@(new NoteTarget(Type, id, s.Name, $"Rarity {s.Rarity}", path))" />
+    </Section>
+</div>
+
+@code {
+    private const string Type = "armor";
+    private static readonly string[] Res = ["Fire", "Water", "Thunder", "Ice", "Dragon"];
+
+    [Parameter, EditorRequired] public ArmorSet Set { get; set; } = null!;
+
+    private IReadOnlyList<(string Skill, int Points)> _totals = [];
+
+    // Skill points summed over the set, highest first.
+    protected override void OnParametersSet() =>
+        _totals = Set.Pieces.SelectMany(p => p.Skills)
+            .GroupBy(k => k.Name)
+            .Select(g => (g.Key, g.Sum(k => k.Qty)))
+            .OrderByDescending(t => t.Item2)
+            .ToList();
+
+    private static RenderFragment Headers(params string[] names) => @<text>
+        @foreach (var h in names)
+        {
+            <th class="tbl-header" style="text-align: left">@h</th>
+        }
+    </text>;
+
+    // A piece's Slot (with its icon) and name cells, shared by the Stats and Materials tables.
+    private RenderFragment PieceCells(ArmorPiece p) => @<text>
+        <td class="tbl-cell text-muted" style="white-space: nowrap; vertical-align: top">
+            <span style="display: inline-flex; align-items: center; gap: 4px">
+                @if (Icons.Armor(p.Slot, Set.Rarity) is { } icon)
+                {
+                    <img src="@icon" alt="" class="icon-20" />
+                }
+                @p.Slot
+            </span>
+        </td>
+        <td class="tbl-cell" style="white-space: nowrap; vertical-align: top" title="@p.Desc.Replace('\n', ' ')">@p.Name</td>
+    </text>;
+}

@@ -1,0 +1,28 @@
+@* Hunting Horn songs: their notes, name, effect and encore effect. *@
+
+<table class="tbl fs-13" style="width: 100%">
+    <thead>
+        <tr>
+            <th class="tbl-header" style="text-align: left">Notes</th>
+            <th class="tbl-header" style="text-align: left">Song Name</th>
+            <th class="tbl-header" style="text-align: left">Description</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var s in Songs)
+        {
+            <tr class="tbl-row">
+                <td class="tbl-cell" style="white-space: nowrap"><NoteIcons Notes="s.Notes" /></td>
+                <td class="tbl-cell" style="font-weight: 600">@s.Name</td>
+                <td class="tbl-cell">
+                    <div>@s.Effect</div>
+                    <div class="text-muted" style="font-style: italic; margin-top: 2px">Encore: @s.Encore</div>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<HornSong> Songs { get; set; } = [];
+}

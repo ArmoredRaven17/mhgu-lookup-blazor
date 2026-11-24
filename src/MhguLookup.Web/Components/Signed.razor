@@ -1,0 +1,6 @@
+@* A value with its sign, green when positive and red when negative. *@
+<span class="@Format.SignClass(Value)">@Format.Signed(Value)</span>
+
+@code {
+    [Parameter] public int Value { get; set; }
+}

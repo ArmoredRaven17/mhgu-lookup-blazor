@@ -1,0 +1,14 @@
+@* Hunting Horn notes as the game's note glyph in each note's colour, named on hover. *@
+
+<span class="note-icons">
+    @foreach (var n in Notes)
+    {
+        <img src="icons/note/@(n.ToLowerInvariant().Replace(' ', '-')).png" alt="@n" title="@n"
+             style="width: calc(@(Size)px * var(--text-scale)); height: calc(@(Size)px * var(--text-scale))" />
+    }
+</span>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<string> Notes { get; set; } = [];
+    [Parameter] public int Size { get; set; } = 20;
+}

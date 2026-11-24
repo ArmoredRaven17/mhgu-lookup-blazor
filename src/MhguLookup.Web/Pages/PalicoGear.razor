@@ -1,0 +1,156 @@
+@page "/palicogear"
+@page "/palicogear/{Id}"
+@inherits DataPage
+
+@*  Routes: palicogear/w<id> a weapon, palicogear/h<id> head armor, palicogear/b<id> body armor.
+    Every label is the game's own text (palico.json's labels). *@
+
+<PageTitle>Palico Equipment · MHGU LookUp</PageTitle>
+
+<ListPage Entries="_entries" Base="palicogear" Selected="@Id" Loading="Loading" HasDetail="HasDetail"
+          Placeholder="Search equipment or materials…" EmptyText="@(Error ?? "Select a piece of Palico equipment.")"
+          Filter="@(_data is null ? null : new(_view, Views, EventCallback.Factory.Create<string>(this, SetView)))">
+    @if (_data is { } data && Id is { Length: > 1 } && int.TryParse(Id.AsSpan(1), out var row))
+    {
+        if (Id[0] == 'w' && data.Weapons.FirstOrDefault(w => w.Id == row) is { } w)
+        {
+            var L = data.Labels;
+            <div @key="Id" style="max-width: 720px">
+                <DetailHeader Title="@w.Name" Sub="@data.Rare(w.Rarity)" Icon="@WeaponIcon(w)" />
+                <GameTextView Text="@w.Desc" Class="text-muted fs-13" Style="margin: 0 0 10px; font-style: italic" />
+                <Section Title="@L.Equipment">
+                    <table class="tbl fs-13">
+                        <tbody>
+                            <Row Label="@L.AtkType">@w.AtkType</Row>
+                            <tr class="tbl-row">
+                                <td class="tbl-cell" colspan="2" style="color: @StyleColor(w.SpType); font-weight: 600">@Format.PlainText(w.Style)</td>
+                            </tr>
+                            <Row Label="@L.Sharpness">@Sharp(w.Sharpness)</Row>
+                            @if (w.Sharpness < 6)
+                            {
+                                <Row Label="@($"+ {L.Handicraft}")">@Sharp(w.Sharpness + 1)</Row>
+                            }
+                            @AttackRows(L, L.Melee, w.Melee, w.ElementType)
+                            @AttackRows(L, L.Ranged, w.Ranged, w.ElementType)
+                            @if (w.Defense > 0)
+                            {
+                                <Row Label="@L.Defense">+@w.Defense</Row>
+                            }
+                        </tbody>
+                    </table>
+                </Section>
+                <Section Title="@L.Materials"><Materials Mats="@AsMaterials(w.Materials)" /></Section>
+            </div>
+        }
+        else if (Id[0] is 'h' or 'b' && (Id[0] == 'h' ? data.Head : data.Body).FirstOrDefault(x => x.Id == row) is { } a)
+        {
+            var L = data.Labels;
+            var head = Id[0] == 'h';
+            <div @key="Id" style="max-width: 720px">
+                <DetailHeader Title="@a.Name" Sub="@($"{(head ? L.Head : L.Body)} · {data.Rare(a.Rarity)}")"
+                              Icon="@Icons.Palico(head ? "head" : "body", a.Rarity)" />
+                <GameTextView Text="@a.Desc" Class="text-muted fs-13" Style="margin: 0 0 10px; font-style: italic" />
+                <Section Title="@L.Equipment">
+                    <table class="tbl fs-13">
+                        <tbody>
+                            <Row Label="@L.Defense">@a.Defense</Row>
+                            @for (var i = 0; i < L.Res.Count; i++)
+                            {
+                                var res = a.Res[i];   // a local: the Row's content renders after the loop has moved on
+                                <Row Label="@L.Res[i]">@(res > 0 ? $"+{res}" : res.ToString())</Row>
+                            }
+                        </tbody>
+                    </table>
+                </Section>
+                <Section Title="@L.Materials"><Materials Mats="@AsMaterials(a.Materials)" /></Section>
+            </div>
+        }
+    }
+</ListPage>
+
+@code {
+    // The three weapon types' colours (the game shows all three in the same yellow): Balanced, Close Range, Boomerang.
+    private static readonly string[] StyleColors = ["#b05ad8", "#e04848", "#3a8fe8"];
+
+    [Parameter] public string? Id { get; set; }
+
+    private Palico? _data;
+    private string _view = "weapons";
+    private string? _viewFor;
+    private IReadOnlyList<ListEntry> _entries = [];
+    private IReadOnlyList<(string, string)> Views = [];
+
+    private bool HasDetail => _data is not null && Id is { Length: > 1 } && int.TryParse(Id.AsSpan(1), out var n) && Id[0] switch
+    {
+        'w' => _data.Weapons.Any(w => w.Id == n),
+        'h' => _data.Head.Any(a => a.Id == n),
+        'b' => _data.Body.Any(a => a.Id == n),
+        _ => false,
+    };
+
+    private static string ViewOf(string? id) => id?.FirstOrDefault() switch { 'h' => "head", 'b' => "body", _ => "weapons" };
+
+    protected override Task OnInitializedAsync() => LoadAsync(async () =>
+    {
+        _data = await Data.Palico();
+        Views = [("weapons", _data.Labels.Weapon), ("head", _data.Labels.Head), ("body", _data.Labels.Body)];
+        BuildEntries();
+    });
+
+    protected override void OnParametersSet()
+    {
+        if (Id == _viewFor) return;
+        _viewFor = Id;
+        if (Id is not null && ViewOf(Id) != _view)
+        {
+            _view = ViewOf(Id);
+            BuildEntries();
+        }
+    }
+
+    private void SetView(string value)
+    {
+        _view = value;
+        BuildEntries();
+    }
+
+    private string? WeaponIcon(PalicoWeapon w) => Icons.Palico(w.AtkTree != 0 ? "blunt" : "cutting", w.Rarity);
+
+    private void BuildEntries()
+    {
+        if (_data is not { } data) return;
+        if (_view == "weapons")
+        {
+            _entries = data.Weapons.OrderBy(w => w.Rarity)
+                .Select(w => new ListEntry($"w{w.Id}", w.Name, Group: data.Rare(w.Rarity), Icon: WeaponIcon(w),
+                    Sub: $"{w.AtkType} · {Format.PlainText(w.Style)}", Search: string.Join(' ', w.Materials.Select(m => m.Name))))
+                .ToList();
+            return;
+        }
+        var head = _view == "head";
+        _entries = (head ? data.Head : data.Body).OrderBy(a => a.Rarity)
+            .Select(a => new ListEntry($"{(head ? 'h' : 'b')}{a.Id}", a.Name, Group: data.Rare(a.Rarity),
+                Icon: Icons.Palico(head ? "head" : "body", a.Rarity),
+                Sub: $"{data.Labels.Defense} {a.Defense}", Search: string.Join(' ', a.Materials.Select(m => m.Name))))
+            .ToList();
+    }
+
+    private static string StyleColor(int spType) => spType >= 0 && spType < StyleColors.Length ? StyleColors[spType] : "inherit";
+
+    private static IReadOnlyList<Material> AsMaterials(IReadOnlyList<Amount> mats) => mats.Select(m => new Material(m.Name, m.Qty, false)).ToList();
+
+    private static RenderFragment Sharp(int v) => @<span style="display: inline-flex; align-items: center; gap: 6px">
+        <span style="width: 28px; height: 10px; background: @GameColors.SharpColors[v]; border: 1px solid var(--border)"></span>
+        @GameColors.SharpNames[v]
+    </span>;
+
+    private static RenderFragment AttackRows(PalicoLabels L, string title, PalicoAttack a, string? element) => @<text>
+        <tr><td colspan="2" class="tbl-header">@title</td></tr>
+        <Row Label="@L.Attack">@a.Attack</Row>
+        <Row Label="@L.Affinity">@(a.Affinity)%</Row>
+        @if (element is not null)
+        {
+            <Row Label="@L.Element"><span style="color: @GameColors.ElementColor(element); font-weight: 600">@element</span> @a.Element</Row>
+        }
+    </text>;
+}

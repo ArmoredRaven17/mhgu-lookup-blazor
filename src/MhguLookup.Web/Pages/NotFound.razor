@@ -1,8 +1,11 @@
 @page "/not-found"
+@page "/{*Path}"
+@inject NavigationManager Navigation
 
-<PageTitle>Not found · MHGU LookUp</PageTitle>
+@*  An address no tab has (a mistyped or old link): go to the home tab, as the React app does. *@
 
-<div class="detail">
-    <h2 class="fs-16" style="margin-bottom: 8px; font-weight: 600">Page not found</h2>
-    <p class="text-muted fs-14"><a href="@Nav.Home">Back to Armor Skills</a></p>
-</div>
+@code {
+    [Parameter] public string? Path { get; set; }
+
+    protected override void OnInitialized() => Navigation.NavigateTo(Nav.Home, replace: true);
+}

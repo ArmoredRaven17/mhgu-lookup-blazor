@@ -1,0 +1,60 @@
+@page "/combos"
+@inherits DataPage
+
+<PageTitle>Combo List · MHGU LookUp</PageTitle>
+
+<div class="combos">
+    <div style="padding: 16px 16px 4px">
+        <h1 class="page-title" style="margin: 0">Combo List</h1>
+        <p class="text-muted fs-13" style="margin-top: 2px">Every combination in the game, with its base success rate.</p>
+    </div>
+    <div class="panel-bar" style="max-width: 420px; border-bottom: none">
+        <input type="search" class="panel-input" placeholder="Search an ingredient or result…" aria-label="Search combinations"
+               @bind="_search" @bind:event="oninput" />
+    </div>
+    <div style="overflow-y: auto; flex: 1; padding: 8px 16px 16px">
+        @if (Error is not null)
+        {
+            <p class="text-muted fs-13">@Error</p>
+        }
+        <table class="tbl">
+            <thead>
+                <tr>
+                    @foreach (var h in new[] { "Result", "Ingredient", "Ingredient", "Success" })
+                    {
+                        <th class="tbl-header" style="text-align: left">@h</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var c in Shown)
+                {
+                    <tr class="tbl-row">
+                        <td class="tbl-cell">@ItemLink(c.Result, c.Ids[2])</td>
+                        <td class="tbl-cell">@ItemLink(c.A, c.Ids[0])</td>
+                        <td class="tbl-cell">@ItemLink(c.B, c.Ids[1])</td>
+                        <td class="tbl-cell" style="text-align: right">@(c.Rate)%</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    private IReadOnlyList<Combo> _combos = [];
+    private string _search = "";
+
+    private IEnumerable<Combo> Shown
+    {
+        get
+        {
+            var q = _search.Trim();
+            return q.Length == 0 ? _combos : _combos.Where(c => $"{c.A} {c.B} {c.Result}".Contains(q, StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
+    protected override Task OnInitializedAsync() => LoadAsync(async () => _combos = await Data.Combos());
+
+    private static RenderFragment ItemLink(string name, int id) => @<a href="items/@id"><ItemName Name="@name" Id="id" /></a>;
+}

@@ -1,4 +1,3 @@
-using System.Text.Json;
 using MhguLookup.Core.Models;
 
 namespace MhguLookup.Core.Tests;
@@ -6,22 +5,7 @@ namespace MhguLookup.Core.Tests;
 /// <summary>Checks the real <c>skills.json</c> the app ships against the models it is read into.</summary>
 public class SkillDataTests
 {
-    private static readonly Lazy<SkillData> Data = new(() =>
-    {
-        var json = File.ReadAllText(FindDataFile("skills.json"));
-        return JsonSerializer.Deserialize(json, LookupJsonContext.Default.SkillData)
-            ?? throw new InvalidDataException("skills.json is empty.");
-    });
-
-    private static string FindDataFile(string name)
-    {
-        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
-        {
-            var path = Path.Combine(dir.FullName, "src", "MhguLookup.Web", "wwwroot", "data", name);
-            if (File.Exists(path)) return path;
-        }
-        throw new FileNotFoundException($"Could not find {name} above {AppContext.BaseDirectory}.");
-    }
+    private static readonly Lazy<SkillData> Data = new(() => DataFiles.Load("skills.json", LookupJsonContext.Default.SkillData));
 
     [Fact]
     public void Deserializes_every_tree_and_skill()

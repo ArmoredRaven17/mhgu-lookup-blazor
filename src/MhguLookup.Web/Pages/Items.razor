@@ -1,0 +1,64 @@
+@page "/items"
+@page "/items/{Id}"
+@inherits DataPage
+
+<PageTitle>@(Selected?.Name ?? "Items") · MHGU LookUp</PageTitle>
+
+<ListPage Entries="_entries" Base="items" Selected="@Id" Loading="Loading" HasDetail="Selected is not null"
+          Placeholder="Search items…" EmptyText="@(Error ?? "Select an item from the list.")">
+    @if (Selected is { } item)
+    {
+        var id = item.Id.ToString();
+        var path = $"items/{id}";
+        <div style="max-width: 760px">
+            <DetailHeader Title="@item.Name" Icon="@Icons.ItemById(item.Id)">
+                <BookmarkButton Bookmark="new Bookmark(Type, id, item.Name, path)" />
+            </DetailHeader>
+            <Section Title="In-Game Description">
+                <GameTextView Text="@item.Desc" Class="fs-14" />
+            </Section>
+            <Section Title="Item">
+                <p class="fs-13">
+                    @if (item.Buy is { } buy)
+                    {
+                        @($"Buy {Format.N(buy)}z · ")
+                    }
+                    Sell @(Format.N(item.Sell))z · Carry up to @item.Carry
+                </p>
+            </Section>
+            <Section Title="How to obtain">
+                <ItemSources @key="id" Sources="@(_sources?.GetValueOrDefault(id) ?? [])" Loaded="_sources is not null" />
+            </Section>
+            <Section Title="Notes">
+                <NotesBox Target="new NoteTarget(Type, id, item.Name, Category, path)" />
+            </Section>
+        </div>
+    }
+</ListPage>
+
+@code {
+    private const string Type = "item";
+    private const string Category = "Item";
+
+    [Parameter] public string? Id { get; set; }
+
+    private IReadOnlyList<Item> _items = [];
+    private IReadOnlyList<ListEntry> _entries = [];
+    private Dictionary<string, List<ItemSource>>? _sources;
+
+    private Item? Selected => _items.FirstOrDefault(i => i.Id.ToString() == Id);
+
+    protected override async Task OnInitializedAsync()
+    {
+        // The game has no item categories, so the items are listed in its own item table order, with no groups.
+        await LoadAsync(async () =>
+        {
+            _items = (await Data.Items()).OrderBy(i => i.Id).ToList();
+            _entries = _items.Select(i => new ListEntry(i.Id.ToString(), i.Name, Icon: Icons.ItemById(i.Id))).ToList();
+        });
+        // The sources file is the largest (about 4 MB), so the list shows first and the sources fill in after.
+        StateHasChanged();
+        try { _sources = await Data.Sources(); }
+        catch (Exception ex) when (ex is HttpRequestException or System.Text.Json.JsonException) { Console.Error.WriteLine(ex); _sources = []; }
+    }
+}

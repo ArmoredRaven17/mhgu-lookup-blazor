@@ -1,0 +1,38 @@
+@* A material list: "Iron Ore ×3", or "Ore materials 4 pts" for a material-point cost.
+   List puts one material per line instead of a comma-separated run. *@
+
+@if (Mats.Count == 0)
+{
+    <span class="text-muted">—</span>
+}
+else if (List)
+{
+    <div class="fs-13 materials-list">
+        @foreach (var m in Mats)
+        {
+            <div style="white-space: nowrap">@One(m)</div>
+        }
+    </div>
+}
+else
+{
+    <span class="fs-13">
+        @for (var i = 0; i < Mats.Count; i++)
+        {
+            if (i > 0)
+            {
+                @(", ")
+            }
+            <span style="white-space: nowrap">@One(Mats[i])</span>
+        }
+    </span>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<Material> Mats { get; set; } = [];
+    [Parameter] public bool List { get; set; }
+
+    private static RenderFragment One(Material m) => m.IsPoints
+        ? @<text>@m.Name materials <span class="text-muted">@m.Qty pts</span></text>
+        : @<text><ItemName Name="@m.Name" /> <span class="text-muted">×@m.Qty</span></text>;
+}

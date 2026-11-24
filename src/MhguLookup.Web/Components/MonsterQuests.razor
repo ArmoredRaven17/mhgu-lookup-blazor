@@ -1,0 +1,96 @@
+@* A monster's quests: a heading per category, then Quest | HP | Atk | Def | Stagger in stars order.
+   Clicking a row opens the statuses' Initial / Step / Max. *@
+
+@foreach (var category in Grouping.QuestCategories.Where(c => Quests.Any(q => q.Category == c)))
+{
+    <div @key="category" style="margin-bottom: 12px">
+        <div class="fs-13" style="font-weight: 600; margin-bottom: 4px">@category</div>
+        <div class="scroll-x">
+            <table class="tbl fs-13">
+                <thead>
+                    <tr>
+                        <th class="tbl-header" style="text-align: left">Quest</th>
+                        @foreach (var h in new[] { "HP", "Atk", "Def", "Stagger" })
+                        {
+                            <th class="tbl-header" style="text-align: right">@h</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var q in Quests.Where(q => q.Category == category))
+                    {
+                        var st = q.Monsters.FirstOrDefault(x => x.Id == MonsterId)?.Stats;
+                        var quest = q;
+                        <tr @key="q.Id" class="tbl-row @(st is not null ? "clickable" : "")" @onclick="() => Toggle(quest, st)">
+                            <td class="tbl-cell">
+                                @if (category != "Special Permit")
+                                {
+                                    <span class="text-muted">@q.Stars: </span>
+                                }
+                                <a href="quests/@q.Id" @onclick:stopPropagation>@q.Title</a>
+                            </td>
+                            @if (st is not null)
+                            {
+                                <td class="tbl-cell num">
+                                    @Format.N(st.Hp)
+                                    @if (st.HpMin != st.HpMax)
+                                    {
+                                        <div class="text-muted fs-11">@Format.N(st.HpMin)–@Format.N(st.HpMax)</div>
+                                    }
+                                </td>
+                                <td class="tbl-cell num">×@Format.Plain(st.Atk)</td>
+                                <td class="tbl-cell num">×@Format.Plain(st.Def)</td>
+                                <td class="tbl-cell num">×@Format.Plain(st.Stagger)</td>
+                            }
+                            else
+                            {
+                                <td class="tbl-cell" colspan="4"></td>
+                            }
+                        </tr>
+                        @if (st is not null && _open == q.Id)
+                        {
+                            <tr>
+                                <td colspan="5" class="tbl-cell">
+                                    <table class="tbl">
+                                        <thead>
+                                            <tr>
+                                                @foreach (var h in new[] { "", "Initial", "Step", "Max" })
+                                                {
+                                                    <th class="tbl-header" style="text-align: right">@h</th>
+                                                }
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var s in st.Status)
+                                            {
+                                                <tr class="tbl-row">
+                                                    <td class="tbl-cell text-muted" style="white-space: nowrap">@s.Status</td>
+                                                    <td class="tbl-cell" style="text-align: right">@Format.N(s.Initial)</td>
+                                                    <td class="tbl-cell" style="text-align: right">@Format.N(s.Step)</td>
+                                                    <td class="tbl-cell" style="text-align: right">@Format.N(s.Max)</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<Quest> Quests { get; set; } = [];
+    [Parameter, EditorRequired] public string MonsterId { get; set; } = "";
+
+    private int? _open;
+
+    private void Toggle(Quest q, QuestStats? st)
+    {
+        if (st is null) return;
+        _open = _open == q.Id ? null : q.Id;
+    }
+}

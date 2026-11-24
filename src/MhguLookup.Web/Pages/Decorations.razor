@@ -1,0 +1,91 @@
+@page "/decorations"
+@page "/decorations/{Id}"
+@inherits DataPage
+
+<PageTitle>@(Selected?.Name ?? "Decorations") · MHGU LookUp</PageTitle>
+
+<ListPage Entries="_entries" Base="decorations" Selected="@Id" Loading="Loading" HasDetail="Selected is not null"
+          Placeholder="Search decorations or skills…" EmptyText="@(Error ?? "Select a decoration from the list.")"
+          Filter="new(_slots, SlotFilter, EventCallback.Factory.Create<string>(this, SetSlots))">
+    @if (Selected is { } d)
+    {
+        var id = d.Id.ToString();
+        var path = $"decorations/{id}";
+        <div style="max-width: 680px">
+            <DetailHeader Title="@d.Name" Icon="@Icons.ItemById(d.Id)">
+                <BookmarkButton Bookmark="new Bookmark(Type, id, d.Name, path)" />
+            </DetailHeader>
+            <Section Title="Decoration">
+                <table class="tbl">
+                    <tbody>
+                        <Row Label="Slots needed"><SlotsText N="d.Slots" /></Row>
+                        <Row Label="Skill points">
+                            @foreach (var s in d.Skills)
+                            {
+                                <div>
+                                    @if (_treeIds.TryGetValue(s.Name, out var tree))
+                                    {
+                                        <a href="armorskills/@tree">@s.Name</a>
+                                    }
+                                    else
+                                    {
+                                        @s.Name
+                                    }
+                                    <Signed Value="s.Qty" />
+                                </div>
+                            }
+                        </Row>
+                        @for (var i = 0; i < d.Recipes.Count; i++)
+                        {
+                            var recipe = d.Recipes[i];   // a local: the Row's content renders after the loop has moved on
+                            <Row Label="@(d.Recipes.Count > 1 ? $"Recipe {i + 1}" : "Recipe")"><Materials Mats="recipe" /></Row>
+                        }
+                    </tbody>
+                </table>
+            </Section>
+            <Section Title="In-Game Description">
+                <GameTextView Text="@d.Desc" Class="fs-14" />
+            </Section>
+            <Section Title="Notes">
+                <NotesBox Target="@(new NoteTarget(Type, id, d.Name, $"{d.Slots}-slot", path))" />
+            </Section>
+        </div>
+    }
+</ListPage>
+
+@code {
+    private const string Type = "decoration";
+
+    private static readonly IReadOnlyList<(string, string)> SlotFilter =
+        [("all", "All decorations"), ("1", "1 slot"), ("2", "2 slots"), ("3", "3 slots")];
+
+    [Parameter] public string? Id { get; set; }
+
+    private IReadOnlyList<Decoration> _decos = [];
+    private Dictionary<string, int> _treeIds = [];
+    private string _slots = "all";
+    private IReadOnlyList<ListEntry> _entries = [];
+
+    private Decoration? Selected => _decos.FirstOrDefault(d => d.Id.ToString() == Id);
+
+    protected override Task OnInitializedAsync() => LoadAsync(async () =>
+    {
+        var decos = Data.Decorations();
+        var skills = Data.Skills();
+        _decos = await decos;
+        _treeIds = (await skills).Trees.ToDictionary(t => t.Name, t => t.Id);
+        BuildEntries();
+    });
+
+    private void SetSlots(string value)
+    {
+        _slots = value;
+        BuildEntries();
+    }
+
+    private void BuildEntries() => _entries = _decos
+        .Where(d => _slots == "all" || d.Slots.ToString() == _slots)
+        .OrderBy(d => d.Name, StringComparer.InvariantCulture)
+        .Select(d => new ListEntry(d.Id.ToString(), d.Name, Icon: Icons.ItemById(d.Id), Search: string.Join(' ', d.Skills.Select(s => s.Name))))
+        .ToList();
+}

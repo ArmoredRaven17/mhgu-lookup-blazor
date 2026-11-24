@@ -1,0 +1,97 @@
+@* Where to get an item: grouped by kind of source, then by where (a monster, a locale, a quest), best chance first. *@
+
+@if (!Loaded)
+{
+    <p class="text-muted fs-13">Loading…</p>
+}
+else if (_groups.Count == 0)
+{
+    <p class="text-muted fs-13">
+        No source read from the game yet. (Read so far: the item shop, combining, monster carves, captures and breaks,
+        gathering, quest rewards.)
+    </p>
+}
+else
+{
+    @foreach (var g in _groups)
+    {
+        var all = _open.Contains(g.Kind);
+        var rows = all ? g.Rows : g.Rows.Take(ShortList);
+        <div @key="g.Kind" style="margin-bottom: 12px">
+            <div class="fs-13" style="font-weight: 600; margin-bottom: 4px">
+                @Headings[g.Kind]<span class="text-muted" style="font-weight: 400"> · @g.Rows.Count</span>
+            </div>
+            <table class="tbl" style="width: 100%">
+                <tbody>
+                    @foreach (var r in rows)
+                    {
+                        <tr @key="r.Where" class="tbl-row">
+                            @* a combination ("A + B") stays on one line *@
+                            <td class="tbl-cell" style="vertical-align: top; width: 34%@(g.Kind == "Combining" ? "; white-space: nowrap" : "")">@r.Where</td>
+                            <td class="tbl-cell fs-12">
+                                @foreach (var s in r.Sources)
+                                {
+                                    <div style="display: flex; justify-content: space-between; gap: 12px">
+                                        <span class="text-muted">@s.Detail</span><span>@(s.Percent is { } p ? $"{p}%" : "")</span>
+                                    </div>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            @if (g.Rows.Count > ShortList)
+            {
+                <button class="chip fs-12" style="margin-top: 4px" @onclick="() => Toggle(g.Kind)">
+                    @(all ? "Show fewer" : $"Show all {g.Rows.Count}")
+                </button>
+            }
+        </div>
+    }
+}
+
+@code {
+    private const int ShortList = 12;
+
+    private static readonly string[] Kinds = ["Shop", "Combining", "Monster", "Gathering", "Fishing", "Quest reward"];
+
+    private static readonly Dictionary<string, string> Headings = new()
+    {
+        ["Shop"] = "Shop", ["Combining"] = "Combining", ["Monster"] = "Monsters", ["Gathering"] = "Gathering",
+        ["Fishing"] = "Fishing", ["Quest reward"] = "Quest Rewards",
+    };
+
+    [Parameter, EditorRequired] public IReadOnlyList<ItemSource> Sources { get; set; } = [];
+    [Parameter] public bool Loaded { get; set; }
+
+    private sealed record Place(string Where, IReadOnlyList<ItemSource> Sources, int Best);
+    private sealed record KindGroup(string Kind, IReadOnlyList<Place> Rows);
+
+    private IReadOnlyList<KindGroup> _groups = [];
+    private IReadOnlyList<ItemSource>? _groupedFrom;
+    private readonly HashSet<string> _open = [];
+
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(_groupedFrom, Sources)) return;
+        _groupedFrom = Sources;
+        _groups = Kinds
+            .Select(kind => new KindGroup(kind, Sources
+                .Where(s => s.Kind == kind)
+                .GroupBy(s => s.Where)
+                .Select(g =>
+                {
+                    var sorted = g.OrderByDescending(s => s.Percent ?? 0).ToList();
+                    return new Place(g.Key, sorted, sorted.Max(s => s.Percent ?? 0));
+                })
+                .OrderByDescending(p => p.Best).ThenBy(p => p.Where, StringComparer.InvariantCulture)
+                .ToList()))
+            .Where(g => g.Rows.Count > 0)
+            .ToList();
+    }
+
+    private void Toggle(string kind)
+    {
+        if (!_open.Remove(kind)) _open.Add(kind);
+    }
+}

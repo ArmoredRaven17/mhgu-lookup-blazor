@@ -1,0 +1,74 @@
+@page "/monsters"
+@page "/monsters/{Id}"
+@inherits DataPage
+
+<PageTitle>@(Selected?.Name ?? "Monsters") · MHGU LookUp</PageTitle>
+
+<ListPage Entries="_entries" Base="monsters" Selected="@Id" Loading="Loading" HasDetail="Selected is not null"
+          Placeholder="Search monsters…" EmptyText="@(Error ?? "Select a monster from the list.")"
+          Filter="new(_size, Sizes, EventCallback.Factory.Create<string>(this, SetSize))">
+    @if (Selected is { } m)
+    {
+        <MonsterDetail @key="m.Id" Monster="m" ZoneTypes="_data.ZoneTypes" />
+    }
+</ListPage>
+
+@code {
+    private static readonly IReadOnlyList<(string, string)> Sizes = [("large", "Large monsters"), ("small", "Small monsters")];
+
+    [Parameter] public string? Id { get; set; }
+
+    private MonsterData _data = MonsterData.Empty;
+    private string _size = "large";
+    private string? _sizeFor;
+    private IReadOnlyList<ListEntry> _entries = [];
+
+    private Monster? Selected => _data.Monsters.FirstOrDefault(m => m.Id == Id);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync(async () => _data = await Data.Monsters());
+        SyncSize();
+        BuildEntries();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (SyncSize()) BuildEntries();
+    }
+
+    // A monster opened by link shows its own size's list.
+    private bool SyncSize()
+    {
+        if (Selected is not { } m || m.Id == _sizeFor) return false;
+        _sizeFor = m.Id;
+        var size = m.Small ? "small" : "large";
+        if (size == _size) return false;
+        _size = size;
+        return true;
+    }
+
+    private void SetSize(string value)
+    {
+        _size = value;
+        BuildEntries();
+    }
+
+    // Listed as the Monster Viewer lists them: under their class, in the classes' order, each class in the viewer's
+    // own order (monsters.json's), so variants sit next to their monster.
+    private void BuildEntries()
+    {
+        int Rank(string c) { var i = Grouping.IndexOf(_data.Classes, c); return i < 0 ? 99 : i; }
+        _entries = _data.Monsters
+            .Select((m, i) => (Monster: m, Position: i))
+            .Where(x => (_size == "small") == x.Monster.Small)
+            .OrderBy(x => Rank(x.Monster.ListClass ?? x.Monster.Class)).ThenBy(x => x.Position)
+            .Select(x => new ListEntry(
+                Key: x.Monster.Id,
+                Label: x.Monster.Name,
+                Group: x.Monster.ListClass ?? (x.Monster.Class.Length > 0 ? x.Monster.Class : "Unclassified"),
+                Search: x.Monster.Class,
+                Icon: Icons.Monster(x.Monster.Id)))
+            .ToList();
+    }
+}

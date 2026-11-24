@@ -1,0 +1,6 @@
+@* Decoration slots: ◯ for each slot, — for each empty one, out of three. *@
+<span style="letter-spacing: 2px">@(new string('◯', N) + new string('—', Math.Max(0, 3 - N)))</span>
+
+@code {
+    [Parameter] public int N { get; set; }
+}

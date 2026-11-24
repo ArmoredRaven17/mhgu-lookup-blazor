@@ -1,0 +1,101 @@
+@* A Canteen dish: its ingredients, meal effects, and the skills each sauce gives. *@
+
+@{
+    var d = Data.Dishes[Row];
+    var sauces = Data.Menus.GetValueOrDefault(d.Menu.ToString()) ?? [];
+    var path = $"canteen/d{Row}";
+}
+<div style="max-width: 820px">
+    <DetailHeader Title="@d.Name" Sub="@($"Canteen Level {d.Level}")">
+        <BookmarkButton Bookmark="new Bookmark(Type, Row.ToString(), d.Name, path)" />
+    </DetailHeader>
+    <Section Title="Ingredients">
+        <p class="fs-14">
+            @if (d.Ingredients is { } ings)
+            {
+                for (var i = 0; i < ings.Count; i++)
+                {
+                    var n = ings[i];
+                    if (i > 0)
+                    {
+                        @(" + ")
+                    }
+                    <a href="canteen/i@(Data.Ingredients.ToList().IndexOf(n))">@n</a>
+                }
+            }
+            else
+            {
+                @("None: on the menu from the start.")
+            }
+        </p>
+    </Section>
+    <Section Title="Meal Effects">
+        <div class="fs-13" style="display: flex; gap: 32px; flex-wrap: wrap">
+            @Effects("Hunter", d.Hunter)
+            @Effects("Palico", d.Palico)
+        </div>
+    </Section>
+    <Section Title="Sauces and Skills">
+        <table class="tbl">
+            <thead>
+                <tr>
+                    @foreach (var h in new[] { "Sauce", "1st skill", "2nd skill", "3rd skill" })
+                    {
+                        <th class="tbl-header" style="text-align: left">@h</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var s in sauces)
+                {
+                    <tr class="tbl-row">
+                        <td class="tbl-cell" style="white-space: nowrap">@s.Name</td>
+                        @for (var k = 0; k < 3; k++)
+                        {
+                            var skill = k < s.Skills.Count ? s.Skills[k] : "";
+                            <td class="tbl-cell">
+                                @if (skill == "Food Skills")
+                                {
+                                    <a href="canteen/skills">Food Skills</a>
+                                }
+                                else
+                                {
+                                    @skill
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <p class="text-muted fs-12" style="margin-top: 6px">@CanteenText.Odds(Data)</p>
+    </Section>
+    <Section Title="Notes">
+        <NotesBox Target="@(new NoteTarget(Type, Row.ToString(), d.Name, "Canteen dish", path))" />
+    </Section>
+</div>
+
+@code {
+    private const string Type = "dish";
+
+    [Parameter, EditorRequired] public Canteen Data { get; set; } = null!;
+    [Parameter] public int Row { get; set; }
+
+    // The stats a meal raises, in the game's order; the ones it leaves alone are left out.
+    private static RenderFragment Effects(string title, IReadOnlyDictionary<string, int> values) => __builder =>
+    {
+        var shown = values.Where(kv => kv.Value != 0).ToList();
+        if (shown.Count == 0) return;
+        <div>
+            <div style="font-weight: 600; margin-bottom: 2px">@title</div>
+            <table class="tbl">
+                <tbody>
+                    @foreach (var (k, v) in shown)
+                    {
+                        <tr class="tbl-row"><td class="tbl-cell text-muted">@k</td><td class="tbl-cell">+@v</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    };
+}
