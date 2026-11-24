@@ -1,0 +1,19 @@
+@implements IDisposable
+@inject Bookmarks Bookmarks
+
+@{ var active = Bookmarks.IsBookmarked(Bookmark.Path); }
+<button class="bookmark-button" title="@(active ? "Remove bookmark" : "Add bookmark")"
+        @onclick="() => Bookmarks.Toggle(Bookmark)">
+    <img src="assets/Misc/bookmark_@(active ? "on" : "off").png" alt="@(active ? "Bookmarked" : "Not bookmarked")"
+         width="24" height="24" style="object-fit: contain; flex-shrink: 0" />
+</button>
+
+@code {
+    [Parameter, EditorRequired] public Bookmark Bookmark { get; set; } = null!;
+
+    protected override void OnInitialized() => Bookmarks.Changed += OnChanged;
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Bookmarks.Changed -= OnChanged;
+}

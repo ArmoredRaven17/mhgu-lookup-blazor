@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MhguLookup.Core/MhguLookup.Core.csproj" />
+    <Project Path="src/MhguLookup.Web/MhguLookup.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MhguLookup.Core.Tests/MhguLookup.Core.Tests.csproj" />
+  </Folder>
+</Solution>

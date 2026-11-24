@@ -1,0 +1,29 @@
+@* A tab that is still only in the React app. Literal routes (such as /armorskills) take precedence over these. *@
+@page "/{Tab}"
+@page "/{Tab}/{*Rest}"
+
+@{ var item = Nav.Items.FirstOrDefault(n => n.Path == Tab); }
+<PageTitle>@(item?.Label ?? "Not found") · MHGU LookUp</PageTitle>
+
+<div class="detail">
+    @if (item is null)
+    {
+        <h2 class="fs-16" style="margin-bottom: 8px; font-weight: 600">Page not found</h2>
+        <p class="text-muted fs-14">There is no <strong>@Tab</strong> tab. <a href="@Nav.Home">Back to Armor Skills</a></p>
+    }
+    else
+    {
+        <h2 class="fs-16" style="margin-bottom: 8px; font-weight: 600">@item.Label</h2>
+        <p class="text-muted fs-14">
+            This tab hasn't been ported to Blazor yet.
+            <a href="@ReactUrl(item)" target="_blank" rel="noopener">Open @item.Label in the React version</a>
+        </p>
+    }
+</div>
+
+@code {
+    [Parameter] public string Tab { get; set; } = "";
+    [Parameter] public string? Rest { get; set; }
+
+    private string ReactUrl(NavItem item) => Nav.ReactAppUrl + item.Path + (Rest is null ? "" : "/" + Rest);
+}

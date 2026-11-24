@@ -1,0 +1,22 @@
+@* The user's own note on an entity. Saves when the box loses focus; a blank note deletes it. *@
+@inject Notes Notes
+
+<textarea class="notes-box" placeholder="Add your own notes…" aria-label="Your notes"
+          @bind="_text" @bind:event="oninput" @onblur="Save"></textarea>
+
+@code {
+    [Parameter, EditorRequired] public NoteTarget Target { get; set; } = null!;
+
+    private string _text = "";
+    private (string Type, string Id)? _loadedFor;
+
+    // Reload when the page switches to a different entity.
+    protected override void OnParametersSet()
+    {
+        if (_loadedFor == (Target.Type, Target.Id)) return;
+        _loadedFor = (Target.Type, Target.Id);
+        _text = Notes.Get(Target.Type, Target.Id);
+    }
+
+    private void Save() => Notes.Set(Target, _text);
+}

@@ -1,0 +1,29 @@
+@* The game's own text, with its colour and centring markup applied (parsed by Core's GameText). *@
+
+@{
+    var parsed = GameText.Parse(Text);
+    var style = parsed.Centred ? $"text-align: center; {Style}" : Style;
+}
+<p class="@Class" style="@style">
+    @foreach (var part in parsed.Parts)
+    {
+        if (part.IsBreak)
+        {
+            <br />
+        }
+        else if (part.Color is null)
+        {
+            @part.Text
+        }
+        else
+        {
+            <span class="game-hl" style="@(part.IsDefaultHighlight ? null : $"color: {part.Color}")">@part.Text</span>
+        }
+    }
+</p>
+
+@code {
+    [Parameter] public string? Text { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Style { get; set; }
+}

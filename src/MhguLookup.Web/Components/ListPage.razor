@@ -1,0 +1,154 @@
+@* The list + detail shell every lookup tab shares: a resizable, collapsible list panel with an optional
+   filter and a search box, and the selected entry's detail beside it. *@
+@inject NavigationManager Navigation
+
+<div class="list-page">
+    <CollapsiblePanel Width="PanelWidth">
+        @if (Filter is not null)
+        {
+            <div class="panel-bar">
+                <select class="panel-input" value="@Filter.Value"
+                        @onchange="e => Filter.OnChange.InvokeAsync(e.Value?.ToString() ?? string.Empty)">
+                    @foreach (var (value, label) in Filter.Options)
+                    {
+                        <option value="@value">@label</option>
+                    }
+                </select>
+            </div>
+        }
+        @if (Tools is not null)
+        {
+            <div class="panel-bar tools">@Tools</div>
+        }
+        <div class="panel-bar">
+            <input type="search" class="panel-input" placeholder="@Placeholder" aria-label="@Placeholder"
+                   @bind="_search" @bind:event="oninput" />
+        </div>
+
+        <div class="list-scroll">
+            @{
+                var shown = ListView.Filter(Entries, _search, _collapsed);
+                var searching = !string.IsNullOrWhiteSpace(_search);
+                string? lastGroup = null;
+            }
+            @foreach (var e in shown)
+            {
+                if (e.Group is not null && e.Group != lastGroup)
+                {
+                    <div class="list-group" style="@(e.GroupColor is null ? null : $"color: {e.GroupColor}")">@e.Group</div>
+                }
+                lastGroup = e.Group;
+                var entry = e;
+                <button @key="entry.Key" class="@(entry.Key == Selected ? "list-item active" : "list-item")"
+                        style="padding-left: @(IndentPx(entry, searching))px"
+                        @onclick="() => Open(entry)">
+                    <span class="list-item-row">
+                        @if (entry.Tree && !searching)
+                        {
+                            <span class="tree-guides">
+                                @foreach (var g in _lines.For(entry.Key))
+                                {
+                                    <span class="guide g@((int)g)"></span>
+                                }
+                                @if (_lines.HasChildren.Contains(entry.Key))
+                                {
+                                    var isCollapsed = _collapsed.Contains(entry.Key);
+                                    <span class="tree-toggle" title="@(isCollapsed ? "Expand" : "Collapse")"
+                                          @onclick="() => ToggleBranch(entry.Key)" @onclick:stopPropagation>@(isCollapsed ? "▸" : "▾")</span>
+                                }
+                                else
+                                {
+                                    <span style="width: 14px"></span>
+                                }
+                            </span>
+                        }
+                        @if (entry.Icon is not null)
+                        {
+                            <img src="@entry.Icon" alt="" style="width: calc(22px * var(--text-scale)); height: calc(22px * var(--text-scale)); image-rendering: pixelated; flex-shrink: 0" />
+                        }
+                        <span>
+                            @entry.Label
+                            @if (entry.Sub is not null)
+                            {
+                                <span class="list-item-sub">@entry.Sub</span>
+                            }
+                        </span>
+                    </span>
+                </button>
+            }
+            @if (Loading)
+            {
+                <p class="list-empty">Loading…</p>
+            }
+            else if (shown.Count == 0)
+            {
+                <p class="list-empty">Nothing found.</p>
+            }
+        </div>
+    </CollapsiblePanel>
+
+    <div class="detail">
+        @if (HasDetail && ChildContent is not null)
+        {
+            @ChildContent
+        }
+        else
+        {
+            <p class="detail-empty">@EmptyText</p>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>A drop-down above the search box (e.g. the weapon class).</summary>
+    public sealed record ListFilter(string Value, IReadOnlyList<(string Value, string Label)> Options, EventCallback<string> OnChange);
+
+    [Parameter, EditorRequired] public IReadOnlyList<ListEntry> Entries { get; set; } = [];
+
+    /// <summary>The tab's route, e.g. <c>armorskills</c>. An entry opens at <c>{Base}/{Key}</c>.</summary>
+    [Parameter, EditorRequired] public string Base { get; set; } = "";
+
+    [Parameter] public string? Selected { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Search…";
+    [Parameter] public string EmptyText { get; set; } = "Select an entry from the list.";
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public int PanelWidth { get; set; } = 250;
+    [Parameter] public ListFilter? Filter { get; set; }
+
+    /// <summary>Buttons under the filter (the Hunting Horn's Songs… button).</summary>
+    [Parameter] public RenderFragment? Tools { get; set; }
+
+    /// <summary>The selected entry's detail, shown while <see cref="HasDetail"/> is true.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Whether there is a detail to show; otherwise <see cref="EmptyText"/> shows. Razor always passes a
+    /// ChildContent fragment, even when everything inside it is behind a false @if, so the page has to say.
+    /// </summary>
+    [Parameter] public bool HasDetail { get; set; }
+
+    private string _search = "";
+    private readonly HashSet<string> _collapsed = [];
+    private IReadOnlyList<ListEntry>? _linesFor;
+    private TreeLines _lines = new(new Dictionary<string, Guide[]>(), new HashSet<string>());
+
+    protected override void OnParametersSet()
+    {
+        // The branch lines depend only on the entries, so they are rebuilt only when the entries change.
+        if (!ReferenceEquals(_linesFor, Entries))
+        {
+            _linesFor = Entries;
+            _lines = ListView.BuildTreeLines(Entries);
+        }
+    }
+
+    private static int IndentPx(ListEntry e, bool searching) =>
+        e.Tree ? 6 : 12 + (searching ? 0 : Math.Min(e.Indent, 8) * 10);
+
+    private void Open(ListEntry e) => Navigation.NavigateTo($"{Base}/{Uri.EscapeDataString(e.Key)}");
+
+    private void ToggleBranch(string key)
+    {
+        if (!_collapsed.Remove(key)) _collapsed.Add(key);
+    }
+}

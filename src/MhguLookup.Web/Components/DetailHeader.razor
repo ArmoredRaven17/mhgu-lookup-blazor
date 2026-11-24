@@ -1,0 +1,23 @@
+@* A detail page's heading, with room after the title for a bookmark button. *@
+
+<div class="detail-header">
+    <div class="detail-header-row">
+        @if (Icon is not null)
+        {
+            <img src="@Icon" alt="" style="width: calc(40px * var(--text-scale)); height: calc(40px * var(--text-scale)); image-rendering: pixelated" />
+        }
+        <h2>@Title</h2>
+        @ChildContent
+    </div>
+    @if (Sub is not null)
+    {
+        <p class="detail-header-sub">@Sub</p>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter] public string? Sub { get; set; }
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

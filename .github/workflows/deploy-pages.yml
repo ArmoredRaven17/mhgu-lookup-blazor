@@ -1,0 +1,65 @@
+name: Test and deploy to GitHub Pages
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; an in-progress deploy is never cancelled, so a push mid-deploy can't leave Pages half-updated.
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Test
+        run: dotnet test --configuration Release
+
+      - name: Publish
+        run: dotnet publish src/MhguLookup.Web --configuration Release --output publish
+
+      # GitHub Pages serves the site from /<repo name>/, not /, so the app's base href has to match.
+      - name: Set base href
+        run: sed -i 's|<base href="/" />|<base href="/${{ github.event.repository.name }}/" />|' publish/wwwroot/index.html
+
+      # Pages has no rewrite rules: a direct hit on a client-side route (e.g. /armorskills/12) 404s before Blazor's
+      # router runs. Serving index.html as 404.html lets the app load and route to the real URL.
+      # .nojekyll stops Jekyll from dropping the _framework folder (its name starts with an underscore).
+      - name: SPA fallback and .nojekyll
+        run: |
+          cp publish/wwwroot/index.html publish/wwwroot/404.html
+          touch publish/wwwroot/.nojekyll
+
+      - uses: actions/configure-pages@v5
+        if: github.event_name != 'pull_request'
+
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
+        with:
+          path: publish/wwwroot
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

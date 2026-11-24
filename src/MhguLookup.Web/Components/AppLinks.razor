@@ -1,0 +1,64 @@
+@* The "Other MHGU Apps" list every GU app carries. *@
+
+<div class="modal-backdrop" @onclick="OnClose">
+    <div class="card modal" role="dialog" aria-label="Other MHGU Apps" tabindex="-1"
+         @ref="_dialog" @onclick:stopPropagation @onkeydown="OnKeyDown">
+        <h2>Other MHGU Apps</h2>
+        <p class="text-muted fs-13" style="margin-bottom: 12px">
+            For Non-MHGU Apps, you can visit the <a href="https://armoredraven17.github.io/" target="_blank" rel="noopener">Home Page</a>
+        </p>
+        <ul class="app-list">
+            @foreach (var (name, url, desc) in Apps)
+            {
+                <li>
+                    <a href="@url" target="_blank" rel="noopener">@name</a>
+                    <span class="list-item-sub fs-12">@desc</span>
+                </li>
+            }
+            <li>
+                <span class="here">MHGU LookUp</span>
+                <span class="fs-11" style="color: var(--accent)">you are here</span>
+                <span class="list-item-sub fs-12">
+                    Look up weapons, armor skills, Hunting Styles, Hunter Arts and items, all read from the game.
+                    This is the Blazor port; the full app is <a href="@Nav.ReactAppUrl" target="_blank" rel="noopener">here</a>.
+                </span>
+            </li>
+        </ul>
+        <div style="text-align: right">
+            <button class="button" @onclick="OnClose">Close</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public EventCallback OnClose { get; set; }
+
+    private ElementReference _dialog;
+
+    private static readonly (string Name, string Url, string Desc)[] Apps =
+    [
+        ("Quest Randomizer", "https://armoredraven17.github.io/MHGU-Quest-Randomizer/", "Rolls random quests when you can't decide what to hunt."),
+        ("Collection Tracker", "https://armoredraven17.github.io/mhgu-collection-tracker/", "Tracks which weapons, armor and Palico gear you own, and what it costs to finish them."),
+        ("Equipment Box", "https://armoredraven17.github.io/mhgu-equipment-box/", "Mirrors the in-game box — 2000 hunter slots and 1000 Palico — so you can plan where things sit."),
+        ("Bingo", "https://armoredraven17.github.io/MHGU-Bingo/", "Builds a bingo card of hunting goals, with a shareable seed so a group can race the same board."),
+        ("Hunting Log", "https://armoredraven17.github.io/MHGU-Hunting-Log/", "Keeps a running record of your hunts — what you were after, what you wore, who came along."),
+        ("Zenny Gauntlet", "https://armoredraven17.github.io/MHGU-Zenny-Gauntlet/", "A scored challenge run — fail a hunt or get carted and you lose that weapon/style combo for the rest of the run."),
+        ("Set Builder", "https://armoredraven17.github.io/mhgu-set-builder/", "Assemble a full set by hand and see exactly which skills it activates."),
+        ("Weapon Trees", "https://armoredraven17.github.io/mhgu-weapon-trees/", "Browse every weapon upgrade tree, with full stats on any node you click."),
+        ("Challenge Run", "https://armoredraven17.github.io/MHGU-Challenge-Run/", "A permadeath challenge run — start from a root weapon, lose it on any quest failure, clear every Key Quest."),
+        ("Charm Farm", "https://armoredraven17.github.io/mhgu-charm-farm/", "A Clicker/Idle game about beating up various Brachydios until you finally get the desired God Charms you always wanted."),
+        ("Talisman Bingo", "https://armoredraven17.github.io/mhgu-talisman-bingo/", "A bingo card of talisman conditions — keep drawing charms until one finally fills the line you needed."),
+        ("Fishing", "https://armoredraven17.github.io/mhgu-fishing/", "A fishing sim on the game's own tables — prepare at camp, travel to a locale, come home with the catch."),
+        ("Armor Viewer", "https://armoredraven17.github.io/mhgu-armor-viewer/", "Renders a hunter in 3D with every armor piece swappable, so you can mix and match a set."),
+        ("Monster Viewer", "https://armoredraven17.github.io/mhgu-monster-viewer/", "Renders every monster in 3D with its own motion lists, so you can watch what they actually do."),
+        ("Armor Skills Explained", "https://armoredraven17.github.io/mhgu-armor-skills-explained/", "Every armor skill: the game's own description, then what it actually does, with the numbers."),
+    ];
+
+    // Focus the dialog so Escape reaches it without a click first.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await _dialog.FocusAsync();
+    }
+
+    private Task OnKeyDown(KeyboardEventArgs e) => e.Key == "Escape" ? OnClose.InvokeAsync() : Task.CompletedTask;
+}

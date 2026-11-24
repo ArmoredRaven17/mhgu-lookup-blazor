@@ -1,0 +1,44 @@
+﻿@inherits LayoutComponentBase
+@implements IDisposable
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<div class="shell">
+    <nav class="topbar">
+        <div class="topbar-title">MHGU LookUp</div>
+
+        <div class="nav-tabs">
+            @foreach (var item in Nav.Items)
+            {
+                <NavLink href="@item.Path" Match="NavLinkMatch.Prefix"
+                         class="@(item.Ported ? "nav-tab" : "nav-tab unported")" ActiveClass="active"
+                         title="@(item.Ported ? item.Label : $"{item.Label} (not ported yet)")">
+                    @item.Label
+                </NavLink>
+            }
+        </div>
+
+        <button class="links-button" title="Other MHGU apps" aria-label="Other MHGU apps"
+                @onclick="() => _linksOpen = true">&#128279;</button>
+    </nav>
+
+    <main class="main">
+        @Body
+    </main>
+
+    @if (_linksOpen)
+    {
+        <AppLinks OnClose="() => _linksOpen = false" />
+    }
+</div>
+
+@code {
+    private bool _linksOpen;
+
+    protected override void OnInitialized() => Navigation.LocationChanged += OnLocationChanged;
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) =>
+        ((IJSInProcessRuntime)JS).InvokeVoid("mhgu.blurNav");
+
+    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
+}

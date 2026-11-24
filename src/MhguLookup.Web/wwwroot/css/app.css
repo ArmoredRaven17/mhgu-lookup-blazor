@@ -1,0 +1,270 @@
+/* MHGU LookUp (Blazor). Ported from the React app's index.css and its components' inline styles.
+   Font sizes are written as calc(Npx * var(--text-scale)) so the Text Size setting rescales every one
+   of them through a single CSS variable, with no re-render. */
+
+/* ── Colours (the saved theme overrides these on start; see UiSettings.ApplySaved) ── */
+:root {
+  --bg:          #1E1E1F;
+  --bg-rgb:      30, 30, 31;
+  --panel:       #232324;
+  --panel-rgb:   35, 35, 36;
+  --surface:     #272728;
+  --surface-rgb: 39, 39, 40;
+  --border:      #444546;
+  --accent:      #C04040;
+  --accent-dim:  #903030;
+  --header-bg:   rgba(192, 64, 64, 0.12);
+  --text:        #d4d4d4;
+  --muted:       #888890;
+  --row-alt:     rgba(255 255 255 / 0.04);
+  --positive:    #6abf6a;
+  --negative:    #bf6a6a;
+  --text-scale:  1;
+}
+
+/* ── Base ── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body, #app {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'MHFUFont', ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
+}
+
+@font-face {
+  font-family: 'MHFUFont';
+  src: url('../assets/Fonts/mhfu_font.ttf') format('truetype');
+  font-display: swap;
+}
+
+/* The parts of Tailwind's preflight reset the React app's look depends on (this port does not use Tailwind). */
+html { line-height: 1.5; -webkit-text-size-adjust: 100%; }
+h1, h2, h3, p { margin: 0; font-size: inherit; }
+h1, h2, h3 { font-weight: inherit; }
+img { display: block; vertical-align: middle; }
+button, input, select, textarea { font: inherit; letter-spacing: inherit; color: inherit; }
+button { background-color: transparent; }
+a { color: var(--accent); text-decoration: inherit; }
+
+/* MHFUFont's line box is short (0.86em), so form controls and clipped text need extra room
+   or the descenders get cut. Do not give a control a fixed height. */
+select, input, textarea { line-height: 1.4; }
+select, input { min-height: calc(1.4em + 10px); }
+.clip-text { line-height: 1.4; }
+
+/* ── Scrollbars ── */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--accent-dim); border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* ── Text helpers ── */
+.text-muted { color: var(--muted); }
+.text-pos   { color: var(--positive); }
+.text-neg   { color: var(--negative); }
+.fs-11 { font-size: calc(11px * var(--text-scale)); }
+.fs-12 { font-size: calc(12px * var(--text-scale)); }
+.fs-13 { font-size: calc(13px * var(--text-scale)); }
+.fs-14 { font-size: calc(14px * var(--text-scale)); }
+.fs-16 { font-size: calc(16px * var(--text-scale)); }
+/* A coloured run in the game's own text (<COL FF0000FF>): the game's red, made readable on dark. */
+.game-hl { color: #ff6b5e; }
+
+/* ── App shell ── */
+.shell { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+
+.topbar {
+  min-height: 44px;
+  display: flex; align-items: stretch; overflow: hidden;
+  background-color: var(--surface);
+  background-image: linear-gradient(rgba(var(--surface-rgb), 0.93), rgba(var(--surface-rgb), 0.93)), url('../assets/Textures/surface_bg.png');
+  background-repeat: no-repeat, repeat;
+  border-bottom: 1px solid var(--border);
+}
+.topbar-title {
+  padding: 0 12px; border-right: 1px solid var(--border);
+  display: flex; align-items: center; flex-shrink: 0;
+  color: var(--accent); font-weight: 600; white-space: nowrap;
+  font-size: calc(15px * var(--text-scale));
+}
+.nav-tabs { display: flex; align-items: stretch; flex: 1; overflow-x: auto; }
+.nav-tabs::-webkit-scrollbar { height: 15px; }
+.nav-tabs::-webkit-scrollbar-thumb { border-radius: 7px; }
+
+.nav-tab {
+  display: flex; align-items: center; padding: 0 10px; flex-shrink: 0;
+  text-decoration: none; white-space: nowrap; color: var(--text);
+  font-size: calc(13px * var(--text-scale));
+  background: transparent;
+  border-bottom: 2px solid transparent;
+  transition: background 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.nav-tab.unported { color: var(--muted); opacity: 0.6; }
+.nav-tab.active { background: var(--header-bg); border-bottom-color: var(--accent); }
+.nav-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+@media (hover: hover) {
+  .nav-tab:hover:not(.active) { background: rgba(255, 255, 255, 0.05); }
+}
+
+.links-button {
+  background: none; border: none; border-left: 1px solid var(--border); cursor: pointer;
+  padding: 0 12px; flex-shrink: 0; font-size: calc(16px * var(--text-scale));
+}
+
+.main {
+  flex: 1; overflow: hidden; display: flex; flex-direction: column;
+  background-color: var(--panel);
+  background-image: linear-gradient(rgba(0, 0, 0, 0.30), rgba(0, 0, 0, 0.30)), linear-gradient(rgba(var(--panel-rgb), 0.88), rgba(var(--panel-rgb), 0.88)), url('../assets/Textures/nav_bg.png');
+  background-repeat: no-repeat, no-repeat, repeat;
+}
+
+/* ── List + detail page ── */
+.list-page { display: flex; height: 100%; overflow: hidden; }
+.list-panel-wrap { display: flex; flex-direction: row; overflow: hidden; }
+.list-panel {
+  display: flex; flex-direction: column; overflow: hidden;
+  background-color: var(--bg);
+  background-image: linear-gradient(rgba(var(--bg-rgb), 0.92), rgba(var(--bg-rgb), 0.92)), url('../assets/Textures/content_bg.png');
+  background-repeat: no-repeat, repeat;
+  border-right: 1px solid var(--border);
+}
+.panel-handle, .panel-show {
+  width: 20px; min-width: 20px; flex-shrink: 0; padding: 0;
+  border: none; border-left: 1px solid var(--border);
+  background: var(--surface); color: var(--muted); font-size: 15px;
+  display: flex; align-items: center; justify-content: center; user-select: none;
+}
+.panel-handle { cursor: ew-resize; }
+.panel-show { cursor: pointer; border-left: none; border-right: 1px solid var(--border); }
+
+.panel-bar { padding: 6px 8px; border-bottom: 1px solid var(--border); }
+.panel-bar.tools { display: flex; gap: 5px; flex-wrap: wrap; }
+.panel-input {
+  width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text); padding: 4px 8px; outline: none; font-size: calc(13px * var(--text-scale));
+}
+select.panel-input { padding: 4px 6px; font-size: calc(12px * var(--text-scale)); }
+
+.list-scroll { overflow-y: auto; flex: 1; }
+.list-group {
+  padding: 8px 12px 3px; font-weight: 700; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border);
+  font-size: calc(11px * var(--text-scale));
+}
+.list-item {
+  display: block; width: 100%; padding: 5px 12px;
+  background: transparent; border: none; border-left: 2px solid transparent;
+  color: var(--text); cursor: pointer; text-align: left;
+  font-size: calc(13px * var(--text-scale));
+}
+.list-item.active { background: var(--header-bg); border-left-color: var(--accent); color: var(--accent); }
+@media (hover: hover) {
+  .list-item:hover:not(.active) { background: var(--row-alt); }
+}
+.list-item-row { display: flex; align-items: center; gap: 6px; }
+.list-item-sub { display: block; color: var(--muted); font-size: calc(11px * var(--text-scale)); }
+.list-empty { color: var(--muted); padding: 12px; font-size: calc(13px * var(--text-scale)); }
+
+/* Tree branch lines (│ ├ └), drawn as lines so they join across rows of any height. */
+.tree-guides { display: flex; align-items: center; flex-shrink: 0; align-self: stretch; margin: -5px 0; }
+.guide { position: relative; width: 14px; align-self: stretch; flex-shrink: 0; }
+.guide::before, .guide::after { content: none; position: absolute; background: color-mix(in srgb, var(--text) 35%, transparent); }
+.guide.g1::before, .guide.g2::before, .guide.g3::before { content: ''; left: 6px; width: 1px; top: 0; bottom: 0; }
+.guide.g3::before { bottom: 50%; }
+.guide.g2::after, .guide.g3::after { content: ''; left: 6px; right: 0; top: 50%; height: 1px; }
+.tree-toggle { width: 14px; text-align: center; cursor: pointer; color: var(--muted); }
+
+.detail { flex: 1; overflow-y: auto; padding: 16px; }
+.detail-empty { margin-top: 16px; color: var(--muted); font-size: calc(14px * var(--text-scale)); }
+
+.detail-header { margin-bottom: 14px; }
+.detail-header-row { display: flex; align-items: center; gap: 6px; }
+.detail-header h2 { color: var(--text); font-weight: 600; font-size: calc(20px * var(--text-scale)); }
+.detail-header-sub { margin-top: 2px; color: var(--muted); font-size: calc(12px * var(--text-scale)); }
+
+.section { margin-bottom: 18px; }
+.section > h3 {
+  margin: 0 0 6px; color: var(--text); font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.05em; font-size: calc(13px * var(--text-scale));
+}
+
+.bookmark-button {
+  background: none; border: none; cursor: pointer; padding: 0 6px 2px;
+  display: inline-flex; align-items: center; align-self: center;
+}
+
+.notes-box {
+  width: 100%; min-height: 80px; max-height: 240px; resize: vertical;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text); padding: 8px 10px; line-height: 1.6; outline: none;
+  font-size: calc(13px * var(--text-scale));
+}
+
+/* ── Tables and cards ── */
+.tbl { border-collapse: collapse; }
+.tbl-header {
+  background: var(--header-bg); color: var(--text); font-weight: 600;
+  letter-spacing: 0.05em; text-transform: uppercase; padding: 4px 6px;
+  font-size: calc(11px * var(--text-scale));
+}
+.tbl-cell { padding: 3px 6px; color: var(--text); font-size: calc(13px * var(--text-scale)); }
+.tbl-row:nth-child(even) { background: var(--row-alt); }
+
+.card {
+  background: rgba(var(--surface-rgb), 0.85);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 14px;
+}
+
+.button {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text); padding: 6px 14px; cursor: pointer; font-size: calc(13px * var(--text-scale));
+}
+
+/* ── Other MHGU Apps dialog ── */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); z-index: 50;
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.modal { max-width: 560px; width: 100%; max-height: 85vh; overflow-y: auto; background: var(--surface); }
+.modal h2 { margin-bottom: 4px; font-size: calc(18px * var(--text-scale)); }
+.app-list { list-style: none; margin: 0; padding: 0; }
+.app-list li { margin-bottom: 10px; }
+.app-list a, .app-list .here { font-weight: 600; font-size: calc(14px * var(--text-scale)); }
+
+/* ── Armor Skills ── */
+.skill-tree { max-width: 760px; }
+.skill-card { margin-bottom: 14px; }
+.skill-card h3 { margin-bottom: 4px; color: var(--accent); font-size: calc(16px * var(--text-scale)); }
+
+/* ── Loading screen and error bar (Blazor's own) ── */
+.loading { position: relative; height: 100%; }
+.loading-title {
+  position: absolute; inset: calc(20vh - 3rem) 0 auto 0; text-align: center;
+  color: var(--accent); font-weight: 600; font-size: 18px;
+}
+.loading-progress { position: absolute; display: block; width: 8rem; height: 8rem; inset: 20vh 0 auto 0; margin: 0 auto; }
+.loading-progress circle {
+  fill: none; stroke: var(--border); stroke-width: 0.6rem;
+  transform-origin: 50% 50%; transform: rotate(-90deg);
+}
+.loading-progress circle:last-child {
+  stroke: var(--accent);
+  stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
+  transition: stroke-dasharray 0.05s ease-in-out;
+}
+.loading-progress-text { position: absolute; text-align: center; font-weight: bold; inset: calc(20vh + 3.25rem) 0 auto 0.2rem; }
+.loading-progress-text::after { content: var(--blazor-load-percentage-text, "Loading"); }
+
+#blazor-error-ui {
+  background: var(--negative); color: #fff;
+  bottom: 0; left: 0; width: 100%; position: fixed; z-index: 1000;
+  display: none; padding: 0.6rem 1.25rem 0.7rem;
+}
+#blazor-error-ui a { color: #fff; }
+#blazor-error-ui .dismiss { cursor: pointer; position: absolute; right: 0.75rem; top: 0.5rem; }

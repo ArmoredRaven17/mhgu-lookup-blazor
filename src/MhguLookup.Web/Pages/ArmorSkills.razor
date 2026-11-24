@@ -1,0 +1,128 @@
+@page "/armorskills"
+@page "/armorskills/{Id}"
+@inject LookupData Data
+@inject IJSRuntime JS
+
+<PageTitle>@(Selected is null ? "Armor Skills" : $"{Selected.Name} · Armor Skills") · MHGU LookUp</PageTitle>
+
+<ListPage Entries="_entries" Base="armorskills" Selected="@Id" Loading="_loading" HasDetail="Selected is not null"
+          Placeholder="Search skill trees or skills…" EmptyText="@(_error ?? "Select a skill tree from the list.")">
+    @if (Selected is { } tree)
+    {
+        var path = $"armorskills/{tree.Id}";
+        <div class="skill-tree">
+            <DetailHeader Title="@tree.Name" Sub="Skill tree">
+                <BookmarkButton Bookmark="new Bookmark(BookmarkType, tree.Id.ToString(), tree.Name, path)" />
+            </DetailHeader>
+            <GameTextView Text="@tree.Desc" Class="text-muted fs-13" Style="margin: 0 0 16px; font-style: italic" />
+
+            <Section Title="Skill Levels">
+                <table class="tbl">
+                    <thead>
+                        <tr>
+                            <th class="tbl-header" style="text-align: right; width: 64px">Points</th>
+                            <th class="tbl-header" style="text-align: left">Activated Skill</th>
+                            <th class="tbl-header" style="text-align: left">In-Game Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var step in Ladder(tree))
+                        {
+                            var skill = SkillById(step.Skill);
+                            <tr @key="step.Points" class="tbl-row">
+                                <td class="tbl-cell @SignClass(step.Points)" style="text-align: right; font-weight: 600">@Signed(step.Points)</td>
+                                <td class="tbl-cell" style="white-space: nowrap">
+                                    <a href="@($"{path}#skill-{step.Skill}")" @onclick="() => ScrollTo(step.Skill)" @onclick:preventDefault>@skill?.Name</a>
+                                </td>
+                                <td class="tbl-cell text-muted">@skill?.Desc</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </Section>
+
+            @foreach (var step in Ladder(tree))
+            {
+                if (SkillById(step.Skill) is not { } skill) continue;
+                <div @key="step.Points" id="skill-@skill.Id" class="card skill-card">
+                    <h3>@skill.Name <span class="fs-13 @SignClass(step.Points)">(@Signed(step.Points))</span></h3>
+                    <p class="text-muted fs-13" style="margin-bottom: 8px; font-style: italic">@skill.Desc</p>
+                    @if (!string.IsNullOrEmpty(skill.Brief))
+                    {
+                        <p class="fs-14">@skill.Brief</p>
+                    }
+                    <p class="fs-12" style="margin-top: 6px">
+                        <a href="@($"{Explained}#s{skill.Id}")" target="_blank" rel="noopener">More detail in MHGU Armor Skills Explained</a>
+                    </p>
+                    @if (skill.GrantedBy.Count > 0)
+                    {
+                        <p class="text-muted fs-12" style="margin-top: 8px">Also granted by: @(string.Join(", ", skill.GrantedBy))</p>
+                    }
+                </div>
+            }
+
+            <p class="text-muted fs-12" style="margin-bottom: 18px">
+                The short explanations are written from the ones in
+                <a href="@Explained" target="_blank" rel="noopener">MHGU Armor Skills Explained</a>, which were read from the game.
+            </p>
+
+            <Section Title="Notes">
+                <NotesBox Target="new NoteTarget(BookmarkType, tree.Id.ToString(), tree.Name, NoteCategory, path)" />
+            </Section>
+        </div>
+    }
+</ListPage>
+
+@code {
+    private const string Explained = "https://armoredraven17.github.io/mhgu-armor-skills-explained/";
+    private const string BookmarkType = "armorskill";
+    private const string NoteCategory = "Skill tree";
+
+    [Parameter] public string? Id { get; set; }
+
+    private SkillData _data = SkillData.Empty;
+    private Dictionary<int, Skill> _skillById = [];
+    private IReadOnlyList<ListEntry> _entries = [];
+    private bool _loading = true;
+    private string? _error;
+
+    private SkillTree? Selected => _data.Trees.FirstOrDefault(t => t.Id.ToString() == Id);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _data = await Data.Skills();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or System.Text.Json.JsonException or InvalidDataException)
+        {
+            _error = "The armor skill data could not be loaded. Try reloading the page.";
+            Console.Error.WriteLine(ex);
+        }
+        _loading = false;
+
+        _skillById = _data.Skills.ToDictionary(s => s.Id);
+        // Sorted by name; the search also matches the names of the skills a tree activates.
+        _entries = _data.Trees
+            .OrderBy(t => t.Name, StringComparer.InvariantCulture)
+            .Select(t => new ListEntry(
+                Key: t.Id.ToString(),
+                Label: t.Name,
+                Search: string.Join(' ', t.Ladder.Select(l => SkillById(l.Skill)?.Name))))
+            .ToList();
+    }
+
+    private Skill? SkillById(int id) => _skillById.GetValueOrDefault(id);
+
+    // Positive skills first, then the negative ones; each by distance from zero.
+    private static IEnumerable<LadderStep> Ladder(SkillTree tree) =>
+        tree.Ladder.OrderByDescending(l => l.Points > 0).ThenBy(l => Math.Abs(l.Points));
+
+    private static string Signed(int n) => n > 0 ? $"+{n}" : n.ToString();
+
+    private static string SignClass(int n) => n > 0 ? "text-pos" : "text-neg";
+
+    // In-page links scroll the detail panel. A plain "#skill-1" href would resolve against <base href> and
+    // navigate to the app root instead.
+    private void ScrollTo(int skillId) => ((IJSInProcessRuntime)JS).InvokeVoid("mhgu.scrollToId", $"skill-{skillId}");
+}

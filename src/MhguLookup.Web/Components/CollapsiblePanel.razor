@@ -1,0 +1,63 @@
+@* The list panel's width, collapse and drag-to-resize. The panel's content passes through unchanged. *@
+@implements IDisposable
+@inject UiSettings Settings
+@inject IJSRuntime JS
+
+@if (Settings.ListCollapsed)
+{
+    <button class="panel-show" title="Show list" @onclick="Settings.ToggleListCollapsed">▸</button>
+}
+else
+{
+    <div class="list-panel-wrap">
+        <div class="list-panel" @ref="_panel" style="width: @(PanelWidth)px; min-width: @(PanelWidth)px">
+            @ChildContent
+        </div>
+        <div class="panel-handle" title="Drag to resize — click to hide list"
+             @onmousedown="StartDrag" @onmousedown:preventDefault>◂</div>
+    </div>
+}
+
+@code {
+    private const int MinWidth = 160;
+    private const int MaxWidth = 700;
+
+    /// <summary>The panel's width at 100% text size, before the user drags it.</summary>
+    [Parameter, EditorRequired] public int Width { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private ElementReference _panel;
+    private DotNetObjectReference<CollapsiblePanel>? _self;
+
+    private int PanelWidth => Settings.ListWidth(Width) ?? NaturalWidth;
+
+    private int NaturalWidth
+    {
+        get
+        {
+            var scale = Settings.TextScale;
+            return (int)Math.Round(Width * scale + (scale > 1 ? 12 : 0));
+        }
+    }
+
+    protected override void OnInitialized() => Settings.Changed += OnSettingsChanged;
+
+    private void StartDrag(MouseEventArgs e)
+    {
+        if (e.Button != 0) return;
+        _self ??= DotNetObjectReference.Create(this);
+        ((IJSInProcessRuntime)JS).InvokeVoid("mhgu.startPanelDrag", _self, _panel, e.ClientX, MinWidth, MaxWidth);
+    }
+
+    [JSInvokable] public void OnResized(int width) => Settings.SetListWidth(Width, width);
+
+    [JSInvokable] public void OnHandleClicked() => Settings.ToggleListCollapsed();
+
+    private void OnSettingsChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Settings.Changed -= OnSettingsChanged;
+        _self?.Dispose();
+    }
+}
